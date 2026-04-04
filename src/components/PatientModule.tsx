@@ -551,20 +551,20 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name *</label>
-                  <input {...register('full_name')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" placeholder="e.g. Zubair Ali" />
-                  {errors.full_name && <p className="text-rose-500 text-[10px] font-bold">{errors.full_name.message as string}</p>}
+                  <input {...register('full_name')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.full_name && "ring-2 ring-rose-500 bg-rose-50")} placeholder="e.g. Zubair Ali" />
+                  {errors.full_name && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.full_name.message as string}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">CNIC Number *</label>
-                  <input {...register('cnic')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" placeholder="XXXXX-XXXXXXX-X" />
-                  {errors.cnic && <p className="text-rose-500 text-[10px] font-bold">{errors.cnic.message as string}</p>}
+                  <input {...register('cnic')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.cnic && "ring-2 ring-rose-500 bg-rose-50")} placeholder="XXXXX-XXXXXXX-X" />
+                  {errors.cnic && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.cnic.message as string}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Number *</label>
-                  <input {...register('contact')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" placeholder="+92 3XX XXXXXXX" />
-                  {errors.contact && <p className="text-rose-500 text-[10px] font-bold">{errors.contact.message as string}</p>}
+                  <input {...register('contact')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.contact && "ring-2 ring-rose-500 bg-rose-50")} placeholder="+92 3XX XXXXXXX" />
+                  {errors.contact && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.contact.message as string}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">District *</label>
@@ -575,8 +575,8 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Address *</label>
-                <textarea {...register('address')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500 min-h-[80px]" placeholder="Complete residential address in Karachi" />
-                {errors.address && <p className="text-rose-500 text-[10px] font-bold">{errors.address.message as string}</p>}
+                <textarea {...register('address')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500 min-h-[80px]", errors.address && "ring-2 ring-rose-500 bg-rose-50")} placeholder="Complete residential address in Karachi" />
+                {errors.address && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.address.message as string}</p>}
               </div>
             </section>
 
@@ -589,21 +589,25 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Guardian Name *</label>
-                  <input {...register('guardian_name')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" />
+                  <input {...register('guardian_name')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.guardian_name && "ring-2 ring-rose-500 bg-rose-50")} />
+                  {errors.guardian_name && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.guardian_name.message as string}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Relationship *</label>
-                  <input {...register('guardian_relationship')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" placeholder="e.g. Son, Daughter, Spouse" />
+                  <input {...register('guardian_relationship')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.guardian_relationship && "ring-2 ring-rose-500 bg-rose-50")} placeholder="e.g. Son, Daughter, Spouse" />
+                  {errors.guardian_relationship && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.guardian_relationship.message as string}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Guardian Contact *</label>
-                  <input {...register('guardian_contact')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" />
+                  <input {...register('guardian_contact')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.guardian_contact && "ring-2 ring-rose-500 bg-rose-50")} />
+                  {errors.guardian_contact && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.guardian_contact.message as string}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Guardian CNIC *</label>
-                  <input {...register('guardian_cnic')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" />
+                  <input {...register('guardian_cnic')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.guardian_cnic && "ring-2 ring-rose-500 bg-rose-50")} />
+                  {errors.guardian_cnic && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.guardian_cnic.message as string}</p>}
                 </div>
               </div>
             </section>
@@ -616,29 +620,33 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
               </h3>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Medical Condition *</label>
-                <textarea {...register('medical_condition')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500 min-h-[80px]" placeholder="Brief description of the patient's condition" />
+                <textarea {...register('medical_condition')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500 min-h-[80px]", errors.medical_condition && "ring-2 ring-rose-500 bg-rose-50")} placeholder="Brief description of the patient's condition" />
+                {errors.medical_condition && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.medical_condition.message as string}</p>}
               </div>
               <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Service Type *</label>
-                  <select {...register('service_type')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500">
+                  <select {...register('service_type')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.service_type && "ring-2 ring-rose-500 bg-rose-50")}>
                     <option>24/7 Nursing Care</option>
                     <option>12/7 Nursing Care</option>
                     <option>Attendant Service</option>
                     <option>Physiotherapy</option>
                   </select>
+                  {errors.service_type && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.service_type.message as string}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Frequency *</label>
-                  <select {...register('frequency')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-2 text-sm">
+                  <select {...register('frequency')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.frequency && "ring-2 ring-rose-500 bg-rose-50")}>
                     <option>Daily</option>
                     <option>Alternate Days</option>
                     <option>Weekly</option>
                   </select>
+                  {errors.frequency && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.frequency.message as string}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Duration *</label>
-                  <input {...register('duration')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm" placeholder="e.g. 30 Days" />
+                  <input {...register('duration')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.duration && "ring-2 ring-rose-500 bg-rose-50")} placeholder="e.g. 30 Days" />
+                  {errors.duration && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.duration.message as string}</p>}
                 </div>
               </div>
             </section>
@@ -652,15 +660,17 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monthly Rate (PKR) *</label>
-                  <input type="number" {...register('billing_rate', { valueAsNumber: true })} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" />
+                  <input type="number" {...register('billing_rate', { valueAsNumber: true })} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.billing_rate && "ring-2 ring-rose-500 bg-rose-50")} />
+                  {errors.billing_rate && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.billing_rate.message as string}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payment Method *</label>
-                  <select {...register('payment_method')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500">
+                  <select {...register('payment_method')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.payment_method && "ring-2 ring-rose-500 bg-rose-50")}>
                     <option>Cash</option>
                     <option>Bank Transfer</option>
                     <option>JazzCash / EasyPaisa</option>
                   </select>
+                  {errors.payment_method && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.payment_method.message as string}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-6">
@@ -780,22 +790,33 @@ export const PatientModule = () => {
   }, [patients, searchQuery, patientFilters]);
 
   const handleAddPatient = async (data: any) => {
-    const newPatient = await dataService.addPatient({
-      ...data,
-      admission_date: data.admission_date || new Date().toISOString().split('T')[0],
-      billing_package: data.billing_package || 'Standard',
-    });
-    setPatients([newPatient, ...patients]);
-    toast.success('Patient registered successfully!');
+    try {
+      const newPatient = await dataService.addPatient({
+        ...data,
+        admission_date: data.admission_date || new Date().toISOString().split('T')[0],
+        billing_package: data.billing_package || 'Standard',
+      });
+      setPatients([newPatient, ...patients]);
+      toast.success('Patient registered successfully!');
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error('Error adding patient:', error);
+      toast.error('Failed to register patient. Please try again.');
+    }
   };
 
   const handleUpdatePatient = async (data: any) => {
     if (!selectedPatient) return;
-    const updatedPatient = await dataService.updatePatient(selectedPatient.id, data);
-    setPatients(patients.map(p => p.id === selectedPatient.id ? updatedPatient : p));
-    setSelectedPatient(updatedPatient);
-    setIsEditModalOpen(false);
-    toast.success('Patient profile updated successfully!');
+    try {
+      const updatedPatient = await dataService.updatePatient(selectedPatient.id, data);
+      setPatients(patients.map(p => p.id === selectedPatient.id ? updatedPatient : p));
+      setSelectedPatient(updatedPatient);
+      setIsEditModalOpen(false);
+      toast.success('Patient profile updated successfully!');
+    } catch (error) {
+      console.error('Error updating patient:', error);
+      toast.error('Failed to update patient profile. Please try again.');
+    }
   };
 
   const handleDeletePatient = async () => {
@@ -1068,8 +1089,20 @@ export const PatientModule = () => {
                           <p className="text-sm font-bold text-slate-900">{formatCNIC(selectedPatient.cnic)}</p>
                         </div>
                         <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedPatient.date_of_birth ? formatPKDate(selectedPatient.date_of_birth) : <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
+                        </div>
+                        <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Contact</p>
                           <p className="text-sm font-bold text-sky-600">{formatPKPhone(selectedPatient.contact)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Alt Contact / WhatsApp</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedPatient.alt_contact ? formatPKPhone(selectedPatient.alt_contact) : <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Admission</p>
@@ -1078,6 +1111,12 @@ export const PatientModule = () => {
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Address</p>
                           <p className="text-xs font-medium text-slate-600 leading-relaxed">{selectedPatient.address}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Area / Town</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedPatient.area || <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
                         </div>
                       </div>
                     </section>
@@ -1153,17 +1192,25 @@ export const PatientModule = () => {
                         <div>
                           <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Clinical Notes</h4>
                           <div className="p-4 bg-slate-50 rounded-2xl text-sm text-slate-600 leading-relaxed italic border-l-4 border-sky-500">
-                            "{selectedPatient.doctor_notes || 'No clinical notes available for this patient.'}"
+                            {selectedPatient.doctor_notes ? (
+                              `"${selectedPatient.doctor_notes}"`
+                            ) : (
+                              <span className="text-rose-500 font-bold">Missing Clinical Notes</span>
+                            )}
                           </div>
                         </div>
                         <div>
                           <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Special Requirements</h4>
                           <div className="flex flex-wrap gap-2">
-                            {(selectedPatient.special_requirements || 'None').split(',').map(req => (
-                              <span key={req} className="px-3 py-1 bg-white border border-slate-100 rounded-full text-[10px] font-bold text-slate-600 shadow-sm">
-                                {req.trim()}
-                              </span>
-                            ))}
+                            {selectedPatient.special_requirements ? (
+                              selectedPatient.special_requirements.split(',').map(req => (
+                                <span key={req} className="px-3 py-1 bg-white border border-slate-100 rounded-full text-[10px] font-bold text-slate-600 shadow-sm">
+                                  {req.trim()}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-rose-500 text-[10px] font-bold uppercase italic">Missing Special Requirements</span>
+                            )}
                           </div>
                         </div>
                       </div>

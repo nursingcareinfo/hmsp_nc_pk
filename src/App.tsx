@@ -26,7 +26,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Sun,
-  Moon
+  Moon,
+  Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from './store';
@@ -40,6 +41,7 @@ import { NotificationsModule } from './components/NotificationsModule';
 import { AIChatAssistant } from './components/AIChatAssistant';
 import { Logo } from './components/Logo';
 import { SupabaseStatus } from './components/SupabaseStatus';
+import { MarketAnalysisModule } from './components/MarketAnalysisModule';
 import { 
   BarChart, 
   Bar, 
@@ -64,16 +66,12 @@ import { geminiService } from './services/geminiService';
 import { Loader2, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
-import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  onAuthStateChanged, 
-  signOut,
-  User as FirebaseUser
-} from 'firebase/auth';
-import { auth } from './firebase';
 import { SettingsModule } from './components/SettingsModule';
 import { AppUser } from './types';
+import { SignIn } from './components/auth/SignIn';
+import { SignUp } from './components/auth/SignUp';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { supabase } from './lib/supabase';
 import { DashboardModule } from './components/DashboardModule';
 
@@ -154,16 +152,28 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [authView, setAuthView] = useState<'signIn' | 'signUp'>('signIn');
 
+  // Firebase Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        // Sync with our app user type and Firestore profile
         try {
           const profile = await dataService.syncUserProfile(user);
           setCurrentUser(profile);
         } catch (error) {
           console.error('Error syncing user profile:', error);
-          toast.error('Failed to sync user profile');
+          // Fallback to basic user info if Firestore sync fails
+          setCurrentUser({
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || user.email?.split('@')[0] || 'User',
+            role: 'viewer',
+            photoURL: user.photoURL || undefined,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
+          });
         }
       } else {
         setCurrentUser(null);
@@ -173,17 +183,6 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
-
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      toast.success('Logged in successfully');
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Failed to login');
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -309,6 +308,12 @@ export default function App() {
               onClick={() => setActiveTab('notifications')} 
               badge={unreadNotifications}
             />
+            <SidebarItem 
+              icon={Globe} 
+              label="Market Analysis" 
+              active={activeTab === 'market'} 
+              onClick={() => setActiveTab('market')} 
+            />
           </nav>
 
           <div className="mt-auto space-y-2">
@@ -411,26 +416,25 @@ export default function App() {
               </motion.div>
             ) : !currentUser ? (
               <motion.div 
-                key="login"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="h-full flex flex-col items-center justify-center gap-8"
+                key="auth"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="h-full flex items-center justify-center p-4"
               >
-                <div className="text-center space-y-4">
-                  <Logo theme={theme} size="lg" />
-                  <h1 className="text-4xl font-black text-slate-900 tracking-tight">Welcome to Admin Portal</h1>
-                  <p className="text-slate-500 font-medium max-w-md mx-auto">
-                    Please sign in with your authorized Google account to access the management dashboard.
-                  </p>
-                </div>
-                <button 
-                  onClick={handleLogin}
-                  className="flex items-center gap-4 px-8 py-4 bg-white border border-slate-200 rounded-[32px] font-bold text-slate-700 shadow-xl hover:shadow-2xl hover:scale-105 transition-all group"
-                >
-                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-                  Sign in with Google
-                </button>
+                {authView === 'signIn' ? (
+                  <SignIn 
+                    theme={theme} 
+                    onSuccess={() => {}} 
+                    onToggleView={() => setAuthView('signUp')} 
+                  />
+                ) : (
+                  <SignUp 
+                    theme={theme} 
+                    onSuccess={() => setAuthView('signIn')} 
+                    onToggleView={() => setAuthView('signIn')} 
+                  />
+                )}
               </motion.div>
             ) : isLoading ? (
               <motion.div 
@@ -480,6 +484,7 @@ export default function App() {
                 {activeTab === 'scheduling' && <SchedulingModule />}
                 {activeTab === 'payroll' && <PayrollModule staff={staff} />}
                 {activeTab === 'notifications' && <NotificationsModule />}
+                {activeTab === 'market' && <MarketAnalysisModule />}
                 {activeTab === 'settings' && <SettingsModule currentUser={currentUser} />}
               </motion.div>
             )}

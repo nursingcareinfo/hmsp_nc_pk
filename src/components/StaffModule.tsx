@@ -140,16 +140,16 @@ const staffSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   whatsapp: z.string().optional(),
   category: z.enum(['Management', 'Nurses', 'Midwives', 'Attendants', 'Doctors', 'Technical', 'Other']),
-  designation: z.string(),
+  designation: z.string().min(1, 'Designation is required'),
   gender: z.enum(['Male', 'Female']),
-  religion: z.string(),
-  marital_status: z.string(),
-  official_district: z.string(),
-  residential_area: z.string(),
+  religion: z.string().min(1, 'Religion is required'),
+  marital_status: z.string().min(1, 'Marital status is required'),
+  official_district: z.string().min(1, 'Official district is required'),
+  residential_area: z.string().min(1, 'Residential area is required'),
   area_town: z.string().optional(),
   city: z.string().optional(),
-  address: z.string(),
-  qualification: z.string(),
+  address: z.string().min(5, 'Complete address is required'),
+  qualification: z.string().min(2, 'Qualification is required'),
   experience_years: z.number().min(0),
   relevant_experience: z.string().optional(),
   shift_preference: z.enum(['Day', 'Night', '24 hrs']).optional(),
@@ -160,9 +160,9 @@ const staffSchema = z.object({
   account_title: z.string().optional(),
   account_number: z.string().optional(),
   iban: z.string().optional(),
-  salary: z.number().min(0),
-  shift_rate: z.number().min(0),
-  hire_date: z.string(),
+  salary: z.number().min(0, 'Salary is required'),
+  shift_rate: z.number().min(0, 'Shift rate is required'),
+  hire_date: z.string().min(1, 'Hire date is required'),
   emergency_contact_name: z.string().optional(),
   emergency_contact_relationship: z.string().optional(),
   emergency_contact_phone: z.string().optional(),
@@ -366,13 +366,16 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
   const [skipAI, setSkipAI] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
 
-  const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm({
+  const { register, handleSubmit, formState: { errors }, watch, setValue, reset, trigger } = useForm({
     resolver: zodResolver(staffSchema),
     defaultValues: initialData || {
       gender: 'Female',
       category: 'Nurses',
       designation: 'Registered Nurse (R/N)',
       official_district: 'Karachi South',
+      religion: 'Muslim',
+      marital_status: 'Single',
+      residential_area: '',
       hire_date: new Date().toISOString().split('T')[0],
       experience_years: 0,
       salary: 0,
@@ -502,7 +505,8 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name *</label>
-                    <input {...register('full_name')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" />
+                    <input {...register('full_name')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.full_name && "ring-2 ring-rose-500 bg-rose-50")} />
+                    {errors.full_name && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.full_name.message as string}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Father/Husband Name</label>
@@ -535,7 +539,8 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">CNIC Number *</label>
-                    <input {...register('cnic')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" placeholder="XXXXX-XXXXXXX-X" />
+                    <input {...register('cnic')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.cnic && "ring-2 ring-rose-500 bg-rose-50")} placeholder="XXXXX-XXXXXXX-X" />
+                    {errors.cnic && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.cnic.message as string}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Marital Status</label>
@@ -550,7 +555,8 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mobile Number *</label>
-                    <input {...register('contact_1')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" placeholder="+92 3XX XXXXXXX" />
+                    <input {...register('contact_1')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.contact_1 && "ring-2 ring-rose-500 bg-rose-50")} placeholder="+92 3XX XXXXXXX" />
+                    {errors.contact_1 && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.contact_1.message as string}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">WhatsApp</label>
@@ -560,18 +566,24 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Complete Address *</label>
-                  <textarea {...register('address')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500 min-h-[80px]" />
+                  <textarea {...register('address')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500 min-h-[80px]", errors.address && "ring-2 ring-rose-500 bg-rose-50")} />
+                  {errors.address && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.address.message as string}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Residential Area *</label>
+                    <input {...register('residential_area')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.residential_area && "ring-2 ring-rose-500 bg-rose-50")} placeholder="e.g. Gulshan-e-Iqbal" />
+                    {errors.residential_area && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.residential_area.message as string}</p>}
+                  </div>
+                  <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Area/Town</label>
                     <input {...register('area_town')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">City</label>
-                    <input {...register('city')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" defaultValue="Karachi" />
-                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">City</label>
+                  <input {...register('city')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" defaultValue="Karachi" />
                 </div>
               </motion.div>
             )}
@@ -644,7 +656,8 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Qualification *</label>
-                    <input {...register('qualification')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" placeholder="e.g. BSN Nursing" />
+                    <input {...register('qualification')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.qualification && "ring-2 ring-rose-500 bg-rose-50")} placeholder="e.g. BSN Nursing" />
+                    {errors.qualification && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.qualification.message as string}</p>}
                   </div>
                 </div>
 
@@ -715,15 +728,18 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hire Date *</label>
-                    <input type="date" {...register('hire_date')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" />
+                    <input type="date" {...register('hire_date')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.hire_date && "ring-2 ring-rose-500 bg-rose-50")} />
+                    {errors.hire_date && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.hire_date.message as string}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary (PKR) *</label>
-                    <input type="number" {...register('salary', { valueAsNumber: true })} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" />
+                    <input type="number" {...register('salary', { valueAsNumber: true })} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.salary && "ring-2 ring-rose-500 bg-rose-50")} />
+                    {errors.salary && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.salary.message as string}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Shift Rate *</label>
-                    <input type="number" {...register('shift_rate', { valueAsNumber: true })} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" />
+                    <input type="number" {...register('shift_rate', { valueAsNumber: true })} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.shift_rate && "ring-2 ring-rose-500 bg-rose-50")} />
+                    {errors.shift_rate && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.shift_rate.message as string}</p>}
                   </div>
                 </div>
               </motion.div>
@@ -741,7 +757,33 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
           </button>
           <button 
             type="button"
-            onClick={() => step < 3 ? setStep(step + 1) : document.getElementById('add-staff-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))}
+            onClick={async () => {
+              let fieldsToValidate: any[] = [];
+              if (step === 1) {
+                fieldsToValidate = ['full_name', 'cnic', 'contact_1', 'address', 'residential_area'];
+              } else if (step === 2) {
+                fieldsToValidate = ['category', 'designation', 'official_district', 'qualification'];
+              }
+
+              if (fieldsToValidate.length > 0) {
+                const isValid = await trigger(fieldsToValidate);
+                if (!isValid) {
+                  toast.error("Please fix the errors before proceeding.");
+                  return;
+                }
+              }
+
+              if (step < 3) {
+                setStep(step + 1);
+              } else {
+                const isFinalValid = await trigger();
+                if (!isFinalValid) {
+                  toast.error("Please fix all errors before submitting.");
+                  return;
+                }
+                document.getElementById('add-staff-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+              }
+            }}
             className="px-8 py-3 bg-teal-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-teal-200 hover:scale-105 transition-all"
           >
             {step === 3 ? (initialData ? 'Update Profile' : 'Complete Registration') : 'Next Step'}
@@ -844,24 +886,32 @@ export const StaffModule = () => {
   }, [searchQuery, staffFilters]);
 
   const handleAddStaff = async (data: any) => {
-    const newStaff = await dataService.addStaff({
-      ...data,
-      status: 'Active',
-      religion: 'Islam',
-      marital_status: 'Single',
-      address: data.residential_area,
-    });
-    setStaff([newStaff, ...staff]);
-    toast.success('Staff member registered successfully!');
+    try {
+      const newStaff = await dataService.addStaff({
+        ...data,
+        status: 'Active',
+      });
+      setStaff([newStaff, ...staff]);
+      toast.success('Staff member registered successfully!');
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error('Error adding staff:', error);
+      toast.error('Failed to register staff member. Please try again.');
+    }
   };
 
   const handleUpdateStaff = async (data: any) => {
     if (!selectedStaff) return;
-    const updatedStaff = await dataService.updateStaff(selectedStaff.id, data);
-    setStaff(staff.map(s => s.id === selectedStaff.id ? updatedStaff : s));
-    setSelectedStaff(updatedStaff);
-    setIsEditModalOpen(false);
-    toast.success('Staff profile updated successfully!');
+    try {
+      const updatedStaff = await dataService.updateStaff(selectedStaff.id, data);
+      setStaff(staff.map(s => s.id === selectedStaff.id ? updatedStaff : s));
+      setSelectedStaff(updatedStaff);
+      setIsEditModalOpen(false);
+      toast.success('Staff profile updated successfully!');
+    } catch (error) {
+      console.error('Error updating staff:', error);
+      toast.error('Failed to update staff profile. Please try again.');
+    }
   };
 
   const handleAddAdvance = async () => {
@@ -1264,6 +1314,18 @@ export const StaffModule = () => {
                           <p className="text-sm font-bold text-slate-900">{formatCNIC(selectedStaff.cnic)}</p>
                         </div>
                         <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Father/Husband Name</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedStaff.father_husband_name || <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedStaff.date_of_birth ? formatPKDate(selectedStaff.date_of_birth) : <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
+                        </div>
+                        <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Gender / Religion</p>
                           <p className="text-sm font-bold text-slate-900">{selectedStaff.gender} • {selectedStaff.religion}</p>
                         </div>
@@ -1284,15 +1346,27 @@ export const StaffModule = () => {
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Primary (WhatsApp)</p>
                           <p className="text-sm font-bold text-teal-600">{formatPKPhone(selectedStaff.contact_1)}</p>
                         </div>
-                        {selectedStaff.contact_2 && (
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase">Secondary</p>
-                            <p className="text-sm font-bold text-slate-900">{formatPKPhone(selectedStaff.contact_2)}</p>
-                          </div>
-                        )}
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Secondary / Alt</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedStaff.alt_number ? formatPKPhone(selectedStaff.alt_number) : <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Email Address</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedStaff.email || <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
+                        </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Residential Area</p>
                           <p className="text-sm font-bold text-slate-900">{selectedStaff.residential_area}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Area / Town</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedStaff.area_town || <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
                         </div>
                       </div>
                     </section>
@@ -1313,6 +1387,12 @@ export const StaffModule = () => {
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Experience</p>
                           <p className="text-sm font-bold text-slate-900">{selectedStaff.experience_years} Years</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Relevant Experience</p>
+                          <p className="text-sm font-bold text-slate-900 italic">
+                            {selectedStaff.relevant_experience || <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
                         </div>
                         {selectedStaff.pnc_number && (
                           <div>
@@ -1340,6 +1420,18 @@ export const StaffModule = () => {
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Shift Rate (12h)</p>
                           <p className="text-sm font-bold text-teal-600">{formatPKR(selectedStaff.shift_rate)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Shift Preference</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedStaff.shift_preference || <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Availability</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedStaff.availability || <span className="text-rose-500 italic font-bold">Missing Info</span>}
+                          </p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Official District</p>

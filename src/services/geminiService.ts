@@ -153,5 +153,33 @@ export const geminiService = {
       console.error("Error parsing raw data:", error);
       return { type: 'unknown', data: {} };
     }
+  },
+
+  /**
+   * Analyze scraped market data
+   */
+  async analyzeMarketData(markdown: string): Promise<string> {
+    const prompt = `Analyze the following scraped web content about a home care or nursing service provider in Karachi. 
+    Extract and summarize:
+    1. Services offered (nursing, attendants, etc.)
+    2. Pricing or packages (if mentioned)
+    3. Location/Area covered
+    4. Contact information
+    5. Unique selling points or reputation
+    6. Comparison to our standard services (Home nursing, 12/24hr shifts, etc.)
+    
+    Scraped Content:
+    ${markdown}`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite-preview",
+        contents: [{ parts: [{ text: prompt }] }],
+      });
+      return response.text || "No analysis generated.";
+    } catch (error) {
+      console.error("Error analyzing market data:", error);
+      throw error;
+    }
   }
 };
