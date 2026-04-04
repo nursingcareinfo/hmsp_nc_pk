@@ -39,17 +39,17 @@ const StaffDraggable = ({ staff }: { staff: Staff }) => (
     dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
     dragElastic={0.1}
     whileDrag={{ scale: 1.05, zIndex: 100, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" }}
-    className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm cursor-grab active:cursor-grabbing group hover:border-teal-500 transition-colors"
+    className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm cursor-grab active:cursor-grabbing group hover:border-teal-500 transition-colors"
   >
     <div className="flex items-center gap-3">
-      <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-sm group-hover:bg-teal-600 group-hover:text-white transition-colors">
+      <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 font-bold text-sm group-hover:bg-teal-600 group-hover:text-white transition-colors">
         {staff.full_name.charAt(0)}
       </div>
       <div>
-        <p className="text-xs font-bold text-slate-900">{staff.full_name}</p>
-        <p className="text-[10px] text-slate-500 font-medium">{staff.designation}</p>
+        <p className="text-xs font-bold text-slate-900 dark:text-white">{staff.full_name}</p>
+        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{staff.designation}</p>
       </div>
-      <div className="ml-auto text-[10px] font-bold text-slate-400 uppercase">
+      <div className="ml-auto text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">
         {staff.official_district.split(' ')[1] || staff.official_district}
       </div>
     </div>
@@ -73,31 +73,31 @@ const PatientDropZone = ({ patient, onDrop }: { patient: Patient, onDrop: (staff
       className={cn(
         "p-6 rounded-[32px] border-2 border-dashed transition-all duration-300",
         isOver 
-          ? "bg-teal-50 border-teal-500 scale-[1.02]" 
-          : "bg-white border-slate-100 hover:border-slate-200"
+          ? "bg-teal-50 dark:bg-teal-900/20 border-teal-500 scale-[1.02]" 
+          : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
       )}
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 font-bold">
+          <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold">
             {patient.full_name.charAt(0)}
           </div>
           <div>
-            <h4 className="text-sm font-bold text-slate-900">{patient.full_name}</h4>
-            <p className="text-[10px] text-slate-500 font-medium">{patient.district}</p>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">{patient.full_name}</h4>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{patient.district}</p>
           </div>
         </div>
         <StatusBadge status={patient.status} />
       </div>
 
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase">
+        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">
           <Clock size={12} />
           {patient.service_type}
         </div>
         
         {patient.assigned_staff_id ? (
-          <div className="flex items-center justify-between p-3 bg-teal-50 rounded-2xl border border-teal-100">
+          <div className="flex items-center justify-between p-3 bg-teal-50 dark:bg-teal-900/20 rounded-2xl border border-teal-100 dark:border-teal-800">
             <div className="flex items-center gap-2">
               <UserCheck size={14} className="text-teal-600" />
               <span className="text-xs font-bold text-teal-900">Caregiver Assigned</span>

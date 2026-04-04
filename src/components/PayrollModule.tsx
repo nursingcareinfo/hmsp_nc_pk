@@ -80,14 +80,14 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Payroll Management</h2>
-          <p className="text-slate-500 text-sm font-medium">Manage 15-day salary cycles and disbursements</p>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Payroll Management</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Manage 15-day salary cycles and disbursements</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={generatePayroll}
             disabled={isGenerating}
-            className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-2xl font-bold shadow-lg shadow-teal-100 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
+            className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-2xl font-bold shadow-lg shadow-teal-100 dark:shadow-teal-900/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
           >
             {isGenerating ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -96,7 +96,7 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
             )}
             Generate 15-Day Payroll
           </button>
-          <button className="p-3 bg-white border border-slate-100 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
+          <button className="p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm">
             <Download size={20} />
           </button>
         </div>

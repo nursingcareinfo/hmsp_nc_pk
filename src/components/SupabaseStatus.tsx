@@ -171,31 +171,31 @@ export const SupabaseStatus: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-slate-900 font-black uppercase tracking-widest text-xs">
-          <Database size={16} className="text-teal-600" />
+        <div className="flex items-center gap-2 text-slate-900 dark:text-white font-black uppercase tracking-widest text-xs">
+          <Database size={16} className="text-teal-600 dark:text-teal-400" />
           <h3>Supabase Status</h3>
         </div>
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-100 dark:border-emerald-800">
           <CheckCircle2 size={10} />
           <span className="text-[10px] font-bold uppercase">Live</span>
         </div>
       </div>
       
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 group hover:border-teal-200 transition-colors">
-          <div className="flex items-center gap-2 text-slate-400 mb-1 group-hover:text-teal-600 transition-colors">
+        <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 group hover:border-teal-200 dark:hover:border-teal-700 transition-colors">
+          <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 mb-1 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
             <Users size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">Staff</span>
           </div>
-          <div className="text-2xl font-black text-slate-900">{stats?.staffCount}</div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white">{stats?.staffCount}</div>
         </div>
         
-        <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 group hover:border-sky-200 transition-colors">
-          <div className="flex items-center gap-2 text-slate-400 mb-1 group-hover:text-sky-600 transition-colors">
+        <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 group hover:border-sky-200 dark:hover:border-sky-700 transition-colors">
+          <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 mb-1 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
             <UserRound size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">Patients</span>
           </div>
-          <div className="text-2xl font-black text-slate-900">{stats?.patientCount}</div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white">{stats?.patientCount}</div>
         </div>
       </div>
       

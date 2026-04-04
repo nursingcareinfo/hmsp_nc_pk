@@ -175,9 +175,9 @@ const staffSchema = z.object({
 
 const StatusBadge = ({ status }: { status: StaffStatus }) => {
   const colors = {
-    Active: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    "On Leave": "bg-amber-50 text-amber-600 border-amber-100",
-    Inactive: "bg-slate-50 text-slate-600 border-slate-100"
+    Active: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800",
+    "On Leave": "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800",
+    Inactive: "bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border-slate-100 dark:border-slate-800"
   };
   
   return (
@@ -226,8 +226,8 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
       whileHover={!isQuickEditing ? { y: -5 } : {}}
       onClick={!isQuickEditing ? onClick : undefined}
       className={cn(
-        "bg-white border p-6 rounded-3xl shadow-sm transition-all relative overflow-hidden",
-        isQuickEditing ? "border-teal-500 ring-2 ring-teal-500/10" : "border-slate-100 hover:shadow-xl cursor-pointer group"
+        "bg-white dark:bg-slate-900 border p-6 rounded-3xl shadow-sm transition-all relative overflow-hidden",
+        isQuickEditing ? "border-teal-500 ring-2 ring-teal-500/10" : "border-slate-100 dark:border-slate-800 hover:shadow-xl cursor-pointer group"
       )}
     >
       <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
@@ -253,7 +253,7 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
       </div>
 
       <div className="flex items-center gap-4 mb-6">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-50 to-sky-50 flex items-center justify-center text-teal-600 font-black text-2xl shadow-inner border border-white">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-50 to-sky-50 dark:from-teal-900/20 dark:to-sky-900/20 flex items-center justify-center text-teal-600 dark:text-teal-400 font-black text-2xl shadow-inner border border-white dark:border-slate-800">
           {staff.full_name.charAt(0)}
         </div>
         <div className="flex-1">
@@ -263,13 +263,13 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
               value={editBuffer.full_name}
               onChange={(e) => setEditBuffer(prev => ({ ...prev, full_name: e.target.value }))}
               onClick={(e) => e.stopPropagation()}
-              className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-teal-500"
+              className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-teal-500 dark:text-white"
             />
           ) : (
-            <h4 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors">{staff.full_name}</h4>
+            <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{staff.full_name}</h4>
           )}
-          <p className="text-xs text-slate-500 font-medium">{staff.category || 'Other'} • {staff.designation}</p>
-          <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-400 font-bold uppercase">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{staff.category || 'Other'} • {staff.designation}</p>
+          <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
             <MapPin size={10} />
             {staff.official_district}
           </div>
@@ -283,26 +283,26 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
               <select 
                 value={editBuffer.status}
                 onChange={(e) => setEditBuffer(prev => ({ ...prev, status: e.target.value as StaffStatus }))}
-                className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-[10px] font-bold uppercase focus:ring-2 focus:ring-teal-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-[10px] font-bold uppercase focus:ring-2 focus:ring-teal-500 dark:text-white"
               >
                 <option value="Active">Active</option>
                 <option value="On Leave">On Leave</option>
                 <option value="Inactive">Inactive</option>
               </select>
               <div className="flex items-center gap-1">
-                <span className="text-[10px] font-bold text-slate-400">Rs.</span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Rs.</span>
                 <input 
                   type="number"
                   value={editBuffer.shift_rate}
                   onChange={(e) => setEditBuffer(prev => ({ ...prev, shift_rate: Number(e.target.value) }))}
-                  className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-[10px] font-bold focus:ring-2 focus:ring-teal-500"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-[10px] font-bold focus:ring-2 focus:ring-teal-500 dark:text-white"
                 />
               </div>
             </div>
           ) : (
             <>
               <StatusBadge status={staff.status} />
-              <span className="px-2 py-0.5 bg-teal-50 text-teal-600 rounded-md text-[9px] font-black uppercase tracking-tighter border border-teal-100 w-fit">
+              <span className="px-2 py-0.5 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-md text-[9px] font-black uppercase tracking-tighter border border-teal-100 dark:border-teal-800 w-fit">
                 {formatPKR(staff.shift_rate)}/Shift
               </span>
             </>
@@ -959,25 +959,25 @@ export const StaffModule = () => {
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-900">Staff Directory</h2>
-          <p className="text-slate-500 font-medium">Manage {staff.length} healthcare professionals across Karachi.</p>
+          <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Staff Directory</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Manage {staff.length} healthcare professionals across Karachi.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
             <button 
               onClick={() => setView('grid')}
-              className={cn("p-2 rounded-xl transition-all", view === 'grid' ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-teal-600")}
+              className={cn("p-2 rounded-xl transition-all", view === 'grid' ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-teal-600 dark:hover:text-teal-400")}
             >
               <LayoutGrid size={20} />
             </button>
             <button 
               onClick={() => setView('list')}
-              className={cn("p-2 rounded-xl transition-all", view === 'list' ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-teal-600")}
+              className={cn("p-2 rounded-xl transition-all", view === 'list' ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-teal-600 dark:hover:text-teal-400")}
             >
               <List size={20} />
             </button>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-100 rounded-2xl text-sm font-bold text-slate-600 hover:border-teal-600 hover:text-teal-600 transition-all shadow-sm">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:border-teal-600 hover:text-teal-600 dark:hover:text-teal-400 transition-all shadow-sm">
             <Download size={18} />
             Export
           </button>
@@ -992,10 +992,10 @@ export const StaffModule = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white/50 backdrop-blur-md p-4 rounded-[32px] border border-slate-100 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-2xl border border-slate-100 shadow-sm">
+      <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-4 rounded-[32px] border border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
           <Filter size={16} className="text-slate-400" />
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filters:</span>
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Filters:</span>
         </div>
         
         <select 

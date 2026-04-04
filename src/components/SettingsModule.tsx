@@ -92,25 +92,27 @@ export const SettingsModule = ({ currentUser }: { currentUser: AppUser | null })
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">User Management</h2>
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">User Management</h2>
             <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-              adminCount >= 2 ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-teal-50 text-teal-600 border-teal-100"
+              adminCount >= 2 
+                ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800" 
+                : "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 border-teal-100 dark:border-teal-800"
             }`}>
               {adminCount} / 2 Admins
             </div>
           </div>
-          <p className="text-slate-500 font-medium">Manage admin access and user permissions</p>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Manage admin access and user permissions</p>
         </div>
         
         <div className="flex items-center gap-3">
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 dark:group-focus-within:text-teal-400 transition-colors" size={18} />
             <input 
               type="text" 
               placeholder="Search users..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 w-64 text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 w-64 text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none dark:text-white"
             />
           </div>
           <button 
@@ -118,8 +120,8 @@ export const SettingsModule = ({ currentUser }: { currentUser: AppUser | null })
             disabled={adminCount >= 2}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-bold transition-all shadow-lg ${
               adminCount >= 2 
-                ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" 
-                : "bg-teal-600 text-white hover:bg-teal-700 shadow-teal-100"
+                ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none" 
+                : "bg-teal-600 text-white hover:bg-teal-700 shadow-teal-100 dark:shadow-teal-900/20"
             }`}
           >
             <UserPlus size={18} />

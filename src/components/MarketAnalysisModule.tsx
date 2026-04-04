@@ -95,29 +95,29 @@ export const MarketAnalysisModule = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <Globe className="text-teal-600" size={32} />
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+            <Globe className="text-teal-600 dark:text-teal-400" size={32} />
             Market Analysis & Competitor Insights
           </h1>
-          <p className="text-slate-500 font-medium">
+          <p className="text-slate-500 dark:text-slate-400 font-medium">
             Real-time intelligence on home care services in Karachi powered by Firecrawl & Gemini.
           </p>
         </div>
         
         <form onSubmit={handleSearch} className="flex items-center gap-2">
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 dark:group-focus-within:text-teal-400 transition-colors" size={18} />
             <input 
               type="text" 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search competitors..."
-              className="bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 w-64 lg:w-80 text-sm focus:ring-2 focus:ring-teal-500 transition-all shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 w-64 lg:w-80 text-sm focus:ring-2 focus:ring-teal-500 transition-all shadow-sm dark:text-white"
             />
           </div>
           <button 
             disabled={isSearching}
-            className="bg-teal-600 text-white px-6 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-teal-100 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2"
+            className="bg-teal-600 text-white px-6 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-teal-100 dark:shadow-teal-900/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2"
           >
             {isSearching ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
             {isSearching ? 'Searching...' : 'Search'}
@@ -135,19 +135,19 @@ export const MarketAnalysisModule = () => {
           
           <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2 custom-scrollbar">
             {results.length === 0 && !isSearching && (
-              <div className="bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-8 text-center space-y-3">
-                <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+              <div className="bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-8 text-center space-y-3">
+                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-2xl flex items-center justify-center mx-auto">
                   <Search size={24} />
                 </div>
-                <p className="text-sm text-slate-500 font-medium">No results yet. Try searching for "Home nursing Karachi".</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">No results yet. Try searching for "Home nursing Karachi".</p>
               </div>
             )}
 
             {isSearching && Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-white border border-slate-100 p-4 rounded-3xl animate-pulse space-y-3">
-                <div className="h-4 bg-slate-100 rounded w-3/4" />
-                <div className="h-3 bg-slate-100 rounded w-1/2" />
-                <div className="h-10 bg-slate-50 rounded-2xl w-full" />
+              <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 rounded-3xl animate-pulse space-y-3">
+                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-3/4" />
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-1/2" />
+                <div className="h-10 bg-slate-50 dark:bg-slate-800/50 rounded-2xl w-full" />
               </div>
             ))}
 
@@ -158,23 +158,23 @@ export const MarketAnalysisModule = () => {
                 onClick={() => setSelectedCompetitor(competitor)}
                 className={`p-4 rounded-3xl border transition-all cursor-pointer group ${
                   selectedCompetitor?.url === competitor.url 
-                    ? 'bg-teal-50 border-teal-200 shadow-lg shadow-teal-50' 
-                    : 'bg-white border-slate-100 hover:border-teal-100 hover:shadow-md'
+                    ? 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 shadow-lg shadow-teal-50 dark:shadow-teal-900/20' 
+                    : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-teal-100 dark:hover:border-teal-700 hover:shadow-md'
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors line-clamp-1">{competitor.title}</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors line-clamp-1">{competitor.title}</h3>
                   <a 
                     href={competitor.url} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="text-slate-400 hover:text-teal-600 transition-colors"
+                    className="text-slate-400 dark:text-slate-500 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
                   >
                     <ExternalLink size={14} />
                   </a>
                 </div>
-                <p className="text-xs text-slate-500 line-clamp-2 mb-4">{competitor.description}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-4">{competitor.description}</p>
                 
                 <button
                   onClick={(e) => {
@@ -184,8 +184,8 @@ export const MarketAnalysisModule = () => {
                   disabled={competitor.isAnalyzing}
                   className={`w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
                     competitor.analysis 
-                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                      : 'bg-slate-900 text-white hover:bg-slate-800'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800' 
+                      : 'bg-slate-900 dark:bg-slate-800 text-white hover:bg-slate-800 dark:hover:bg-slate-700'
                   }`}
                 >
                   {competitor.isAnalyzing ? (
@@ -211,16 +211,16 @@ export const MarketAnalysisModule = () => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white border border-slate-100 rounded-[40px] shadow-xl overflow-hidden flex flex-col h-full max-h-[calc(100vh-200px)]"
+                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[40px] shadow-xl overflow-hidden flex flex-col h-full max-h-[calc(100vh-200px)]"
               >
-                <div className="p-8 border-b border-slate-50 bg-gradient-to-r from-teal-600 to-sky-600 text-white">
+                <div className="p-8 border-b border-slate-50 dark:border-slate-800 bg-gradient-to-r from-teal-600 to-sky-600 text-white">
                   <div className="flex justify-between items-start mb-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-teal-100 text-[10px] font-black uppercase tracking-widest">
                         <Globe size={12} />
                         Competitor Profile
                       </div>
-                      <h2 className="text-2xl font-black tracking-tight">{selectedCompetitor.title}</h2>
+                      <h2 className="text-2xl font-black tracking-tight tracking-tight">{selectedCompetitor.title}</h2>
                     </div>
                     <a 
                       href={selectedCompetitor.url} 
@@ -244,8 +244,8 @@ export const MarketAnalysisModule = () => {
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
                   {selectedCompetitor.analysis ? (
                     <div className="space-y-6">
-                      <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-3xl">
-                        <div className="w-10 h-10 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-100">
+                      <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-3xl">
+                        <div className="w-10 h-10 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20">
                           <Sparkles size={20} />
                         </div>
                         <div>

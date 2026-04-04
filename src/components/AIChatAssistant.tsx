@@ -162,9 +162,7 @@ export const AIChatAssistant = () => {
             </div>
 
             {/* Messages */}
-            <div className={`flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar transition-colors ${
-              theme === 'dark' ? 'bg-slate-950' : 'bg-slate-50/50'
-            }`}>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar transition-colors bg-slate-50/50 dark:bg-slate-950">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
@@ -177,21 +175,19 @@ export const AIChatAssistant = () => {
                   >
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                       msg.role === 'user' 
-                        ? 'bg-teal-100 text-teal-600' 
-                        : theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 shadow-sm'
+                        ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400' 
+                        : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 shadow-sm'
                     }`}>
                       {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                     </div>
                     <div
                       className={`p-3 rounded-2xl text-sm ${
                         msg.role === 'user'
-                          ? 'bg-teal-600 text-white rounded-tr-none shadow-md shadow-teal-100'
-                          : theme === 'dark' 
-                            ? 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700 shadow-sm'
-                            : 'bg-white text-slate-700 rounded-tl-none border border-slate-100 shadow-sm'
+                          ? 'bg-teal-600 text-white rounded-tr-none shadow-md shadow-teal-100 dark:shadow-teal-900/20'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-700 shadow-sm'
                       }`}
                     >
-                      <div className={`prose prose-sm max-w-none ${theme === 'dark' ? 'prose-invert' : 'prose-slate'}`}>
+                      <div className="prose prose-sm max-w-none prose-slate dark:prose-invert">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                       
@@ -212,7 +208,7 @@ export const AIChatAssistant = () => {
 
                       {msg.sources && msg.sources.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-slate-100/10">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
                             <Search size={10} /> Sources
                           </p>
                           <div className="flex flex-wrap gap-2">
@@ -223,9 +219,7 @@ export const AIChatAssistant = () => {
                                   href={source.web.uri}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className={`text-[10px] px-2 py-1 rounded-md transition-colors truncate max-w-[150px] ${
-                                    theme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-teal-900/30 hover:text-teal-400' : 'bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-600'
-                                  }`}
+                                  className="text-[10px] px-2 py-1 rounded-md transition-colors truncate max-w-[150px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 dark:hover:text-teal-400"
                                 >
                                   {source.web.title || 'Source'}
                                 </a>
@@ -240,11 +234,9 @@ export const AIChatAssistant = () => {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className={`p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-3 border ${
-                    theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'
-                  }`}>
-                    <Loader2 size={16} className="animate-spin text-teal-600" />
-                    <span className="text-xs text-slate-500 font-medium">Analyzing data...</span>
+                  <div className="p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-3 border bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700">
+                    <Loader2 size={16} className="animate-spin text-teal-600 dark:text-teal-400" />
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Analyzing data...</span>
                   </div>
                 </div>
               )}
@@ -262,9 +254,7 @@ export const AIChatAssistant = () => {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Paste raw data or ask a question..."
-                  className={`w-full border-none rounded-2xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-teal-500 transition-all ${
-                    theme === 'dark' ? 'bg-slate-800 text-white placeholder:text-slate-500' : 'bg-slate-50 text-slate-900'
-                  }`}
+                  className="w-full border-none rounded-2xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-teal-500 transition-all bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
                 <button
                   onClick={handleSend}
@@ -274,7 +264,7 @@ export const AIChatAssistant = () => {
                   <Send size={18} />
                 </button>
               </div>
-              <p className="text-[10px] text-center text-slate-400 mt-3 font-medium">
+              <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 mt-3 font-medium">
                 AI Data Extraction Enabled
               </p>
             </div>
@@ -286,13 +276,13 @@ export const AIChatAssistant = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={`w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 ${
           isOpen 
-            ? 'bg-slate-900 text-white rotate-90' 
-            : theme === 'dark' ? 'bg-slate-800 text-teal-400 border border-slate-700' : 'bg-white text-teal-600 border border-teal-100 shadow-teal-100'
+            ? 'bg-slate-900 dark:bg-slate-800 text-white rotate-90' 
+            : 'bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-slate-800 shadow-teal-100 dark:shadow-teal-900/20'
         }`}
       >
         {isOpen ? <X size={28} /> : <MessageSquare size={28} />}
         {!isOpen && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-white animate-bounce" />
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900 animate-bounce" />
         )}
       </button>
     </div>

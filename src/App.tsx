@@ -100,8 +100,8 @@ const SidebarItem = ({
     className={cn(
       "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative",
       active 
-        ? "bg-teal-600 text-white shadow-lg shadow-teal-200" 
-        : "text-slate-500 hover:bg-slate-50 hover:text-teal-600"
+        ? "bg-teal-600 text-white shadow-lg shadow-teal-200 dark:shadow-teal-900/20" 
+        : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-teal-600 dark:hover:text-teal-400"
     )}
   >
     <Icon size={20} className={cn(active ? "text-white" : "group-hover:scale-110 transition-transform")} />
@@ -109,7 +109,7 @@ const SidebarItem = ({
     {badge && badge > 0 && (
       <span className={cn(
         "ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-        active ? "bg-white text-teal-600" : "bg-teal-100 text-teal-600"
+        active ? "bg-white text-teal-600" : "bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400"
       )}>
         {badge}
       </span>
@@ -124,21 +124,21 @@ const SidebarItem = ({
 );
 
 const StatCard = ({ title, value, change, icon: Icon, color }: any) => (
-  <div className="bg-white/80 backdrop-blur-md border border-slate-100 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all group">
+  <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-100 dark:border-slate-800 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all group">
     <div className="flex justify-between items-start mb-4">
       <div className={cn("p-3 rounded-2xl", color)}>
         <Icon size={24} className="text-white" />
       </div>
       <div className={cn(
         "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
-        change > 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+        change > 0 ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400"
       )}>
         {change > 0 ? "+" : ""}{change}%
         <TrendingUp size={12} className={change < 0 ? "rotate-180" : ""} />
       </div>
     </div>
-    <h3 className="text-slate-500 text-sm font-medium mb-1">{title}</h3>
-    <p className="text-2xl font-bold text-slate-900">{value}</p>
+    <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">{title}</h3>
+    <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
   </div>
 );
 
@@ -411,8 +411,8 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 className="h-full flex flex-col items-center justify-center gap-4"
               >
-                <div className="w-12 h-12 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin" />
-                <p className="text-slate-500 font-medium animate-pulse">Authenticating...</p>
+                <div className="w-12 h-12 border-4 border-teal-100 dark:border-teal-900/30 border-t-teal-600 rounded-full animate-spin" />
+                <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Authenticating...</p>
               </motion.div>
             ) : !currentUser ? (
               <motion.div 
@@ -444,8 +444,8 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 className="h-full flex flex-col items-center justify-center gap-4"
               >
-                <div className="w-12 h-12 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin" />
-                <p className="text-slate-500 font-medium animate-pulse">Loading dashboard data...</p>
+                <div className="w-12 h-12 border-4 border-teal-100 dark:border-teal-900/30 border-t-teal-600 rounded-full animate-spin" />
+                <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Loading dashboard data...</p>
               </motion.div>
             ) : currentUser.role === 'viewer' ? (
               <motion.div 
@@ -454,18 +454,18 @@ export default function App() {
                 animate={{ opacity: 1, y: 0 }}
                 className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-6"
               >
-                <div className="w-20 h-20 bg-amber-50 text-amber-600 rounded-[32px] flex items-center justify-center border border-amber-100">
+                <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-[32px] flex items-center justify-center border border-amber-100 dark:border-amber-800">
                   <AlertCircle size={40} />
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Access Restricted</h2>
-                  <p className="text-slate-500 font-medium leading-relaxed">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Access Restricted</h2>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
                     Your account ({currentUser.email}) is currently pending authorization. Please contact the Super Admin to grant you admin access.
                   </p>
                 </div>
                 <button 
                   onClick={handleLogout}
-                  className="px-6 py-2.5 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all"
+                  className="px-6 py-2.5 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-800 dark:hover:bg-slate-700 transition-all"
                 >
                   Logout
                 </button>
