@@ -1,16 +1,78 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const rawUrl = (
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || 
+  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) ||
+  (typeof import.meta !== 'undefined' && import.meta.env?.NEXT_PUBLIC_SUPABASE_URL) || 
+  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_URL) ||
+  ''
+).trim();
+
+const supabaseKey = (
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) || 
+  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) ||
+  (typeof import.meta !== 'undefined' && import.meta.env?.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY) || 
+  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY) ||
+  ''
+).trim();
+
+// Clean and validate URL
+let supabaseUrl = rawUrl;
+if (supabaseUrl) {
+  // Remove any trailing slashes or spaces
+  supabaseUrl = supabaseUrl.replace(/\/+$/, '').trim();
+  
+  // Ensure URL has https:// prefix if it's a supabase.co domain
+  if (!supabaseUrl.startsWith('http')) {
+    supabaseUrl = `https://${supabaseUrl}`;
+  }
+}
+
+// Debug check (masked)
+const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
+if (isDev) {
+  console.log('Supabase Config Check:', {
+    originalUrl: rawUrl,
+    finalUrl: supabaseUrl,
+    urlLength: supabaseUrl.length,
+    keyLength: supabaseKey.length,
+    isKeyValid: supabaseKey.startsWith('eyJ'), // JWTs start with eyJ
+  });
+  
+  if (supabaseUrl) {
+    try {
+      const url = new URL(supabaseUrl);
+      console.log('Supabase Host:', url.host);
+      if (!url.host.includes('supabase.co') && !url.host.includes('localhost') && !url.host.includes('127.0.0.1')) {
+        console.warn('Warning: Supabase URL host does not look like a standard Supabase domain:', url.host);
+      }
+    } catch (e) {
+      console.error('Invalid Supabase URL format:', supabaseUrl);
+    }
+  }
+}
 
 export const createClient = () => {
   if (!supabaseUrl || !supabaseKey) {
     return null;
   }
-  return createBrowserClient(
-    supabaseUrl,
-    supabaseKey,
-  );
+  
+  // Basic sanity check for Key vs URL swap
+  if (supabaseUrl.length > 100 && supabaseKey.length < 50) {
+    console.error('Possible Supabase Config Swap: URL is very long and Key is very short. Check your Secrets.');
+  }
+
+  try {
+    return createSupabaseClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    });
+  } catch (error) {
+    console.error('Error creating Supabase client:', error);
+    return null;
+  }
 };
 
 export const supabase = createClient();

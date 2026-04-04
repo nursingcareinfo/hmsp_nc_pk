@@ -40,6 +40,7 @@ import { useUIStore } from '../store';
 import { dataService } from '../dataService';
 import { Staff, District, Designation, StaffStatus, StaffCategory } from '../types';
 import { format } from 'date-fns';
+import { formatPKR, formatPKDate, formatCNIC, formatPKPhone } from '../lib/utils';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useForm } from 'react-hook-form';
@@ -229,12 +230,12 @@ const StaffCard = ({ staff, onClick }: { staff: Staff, onClick: () => void }) =>
       <div className="flex flex-col gap-1.5">
         <StatusBadge status={staff.status} />
         <span className="px-2 py-0.5 bg-teal-50 text-teal-600 rounded-md text-[9px] font-black uppercase tracking-tighter border border-teal-100 w-fit">
-          PKR {staff.shift_rate}/Shift
+          {formatPKR(staff.shift_rate)}/Shift
         </span>
       </div>
       <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
         <Clock size={10} />
-        Joined {format(new Date(staff.hire_date), 'MMM yyyy')}
+        Joined {formatPKDate(staff.hire_date)}
       </div>
     </div>
 
@@ -1151,7 +1152,7 @@ export const StaffModule = () => {
                       <div className="space-y-4">
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">CNIC Number</p>
-                          <p className="text-sm font-bold text-slate-900">{selectedStaff.cnic}</p>
+                          <p className="text-sm font-bold text-slate-900">{formatCNIC(selectedStaff.cnic)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Gender / Religion</p>
@@ -1172,12 +1173,12 @@ export const StaffModule = () => {
                       <div className="space-y-4">
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Primary (WhatsApp)</p>
-                          <p className="text-sm font-bold text-teal-600">{selectedStaff.contact_1}</p>
+                          <p className="text-sm font-bold text-teal-600">{formatPKPhone(selectedStaff.contact_1)}</p>
                         </div>
                         {selectedStaff.contact_2 && (
                           <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase">Secondary</p>
-                            <p className="text-sm font-bold text-slate-900">{selectedStaff.contact_2}</p>
+                            <p className="text-sm font-bold text-slate-900">{formatPKPhone(selectedStaff.contact_2)}</p>
                           </div>
                         )}
                         <div>
@@ -1221,15 +1222,15 @@ export const StaffModule = () => {
                       <div className="space-y-4">
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Hire Date</p>
-                          <p className="text-sm font-bold text-slate-900">{format(new Date(selectedStaff.hire_date), 'MMMM dd, yyyy')}</p>
+                          <p className="text-sm font-bold text-slate-900">{formatPKDate(selectedStaff.hire_date)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Monthly Salary</p>
-                          <p className="text-sm font-bold text-emerald-600">PKR {selectedStaff.salary.toLocaleString()}</p>
+                          <p className="text-sm font-bold text-emerald-600">{formatPKR(selectedStaff.salary)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Shift Rate (12h)</p>
-                          <p className="text-sm font-bold text-teal-600">PKR {selectedStaff.shift_rate.toLocaleString()}</p>
+                          <p className="text-sm font-bold text-teal-600">{formatPKR(selectedStaff.shift_rate)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Official District</p>
@@ -1363,11 +1364,11 @@ export const StaffModule = () => {
                           selectedStaff.advances.map((adv) => (
                             <div key={adv.id} className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
                               <div>
-                                <p className="text-sm font-bold text-slate-900">PKR {adv.amount.toLocaleString()}</p>
+                                <p className="text-sm font-bold text-slate-900">{formatPKR(adv.amount)}</p>
                                 <p className="text-[10px] text-slate-400 font-medium">{adv.reason || 'No reason provided'}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-[10px] font-bold text-slate-500 uppercase">{format(new Date(adv.date), 'MMM dd, yyyy')}</p>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">{formatPKDate(adv.date)}</p>
                                 <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${
                                   adv.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' :
                                   adv.status === 'Deducted' ? 'bg-slate-100 text-slate-500' :

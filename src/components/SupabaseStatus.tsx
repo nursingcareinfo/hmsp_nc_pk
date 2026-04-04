@@ -125,17 +125,41 @@ export const SupabaseStatus: React.FC = () => {
   }
 
   if (error) {
+    const isFetchError = error.includes('Failed to fetch') || error.includes('Network Error');
     return (
-      <div className="p-6 space-y-3">
+      <div className="p-6 space-y-4">
         <div className="flex items-center gap-2 text-rose-500 font-bold">
           <AlertCircle size={20} />
           <h3 className="text-sm uppercase tracking-wider">Supabase Offline</h3>
         </div>
         <p className="text-xs text-slate-500 leading-relaxed">{error}</p>
+        
+        {isFetchError && (
+          <div className="bg-rose-50 p-3 rounded-xl border border-rose-100 space-y-2">
+            <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">Troubleshooting:</p>
+            <ul className="text-[10px] text-rose-500 list-disc pl-3 space-y-1">
+              <li>Check if your <b>VITE_SUPABASE_URL</b> starts with <b>https://</b></li>
+              <li>Ensure your <b>VITE_SUPABASE_ANON_KEY</b> starts with <b>eyJ</b></li>
+              <li>Ensure there are no extra spaces in your <b>Secrets</b></li>
+              <li>Disable any AdBlockers or VPNs that might block Supabase</li>
+              <li>Check if your Supabase project is <b>Healthy</b> (not paused)</li>
+            </ul>
+            
+            <div className="mt-3 pt-2 border-t border-rose-100">
+              <p className="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-1">Debug Info:</p>
+              <div className="space-y-1 font-mono text-[9px] text-rose-400">
+                <p className="break-all">URL: {import.meta.env.VITE_SUPABASE_URL || 'MISSING'}</p>
+                <p>KEY: {import.meta.env.VITE_SUPABASE_ANON_KEY ? `${import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 8)}...` : 'MISSING'}</p>
+                <p>Protocol: {window.location.protocol}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="pt-2">
           <button 
             onClick={() => window.location.reload()}
-            className="text-[10px] font-bold text-teal-600 hover:underline uppercase tracking-widest"
+            className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-colors"
           >
             Retry Connection
           </button>

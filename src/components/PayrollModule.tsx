@@ -16,6 +16,7 @@ import { useUIStore } from '../store';
 import { Payroll, Staff } from '../types';
 import { dataService } from '../dataService';
 import { format, addDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { formatPKR, formatPKDate } from '../lib/utils';
 import { toast } from 'sonner';
 
 export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
@@ -109,7 +110,7 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
             </div>
             <span className="text-emerald-900 font-bold">Paid This Period</span>
           </div>
-          <p className="text-3xl font-black text-emerald-900">PKR 1.2M</p>
+          <p className="text-3xl font-black text-emerald-900">{formatPKR(1200000)}</p>
           <p className="text-xs text-emerald-600 font-bold mt-1">84 Staff Members</p>
         </div>
         <div className="bg-amber-50 border border-amber-100 p-6 rounded-3xl">
@@ -119,7 +120,7 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
             </div>
             <span className="text-amber-900 font-bold">Pending Approval</span>
           </div>
-          <p className="text-3xl font-black text-amber-900">PKR 450K</p>
+          <p className="text-3xl font-black text-amber-900">{formatPKR(450000)}</p>
           <p className="text-xs text-amber-600 font-bold mt-1">32 Staff Members</p>
         </div>
         <div className="bg-slate-100 border border-slate-200 p-6 rounded-3xl">
@@ -129,7 +130,7 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
             </div>
             <span className="text-slate-900 font-bold">Total Budget</span>
           </div>
-          <p className="text-3xl font-black text-slate-900">PKR 2.8M</p>
+          <p className="text-3xl font-black text-slate-900">{formatPKR(2800000)}</p>
           <p className="text-xs text-slate-500 font-bold mt-1">Next Cycle: April 15</p>
         </div>
       </div>
@@ -202,21 +203,21 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-slate-700">
-                          {format(new Date(record.period_start), 'MMM dd')} - {format(new Date(record.period_end), 'MMM dd')}
+                          {formatPKDate(record.period_start)} - {formatPKDate(record.period_end)}
                         </span>
                         <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">15-Day Cycle</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <p className="font-black text-slate-900">PKR {record.net_salary.toLocaleString()}</p>
+                        <p className="font-black text-slate-900">{formatPKR(record.net_salary)}</p>
                         <div className="flex flex-col gap-0.5">
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-                            {record.shifts_worked} Shifts @ PKR {record.shift_rate}
+                            {record.shifts_worked} Shifts @ {formatPKR(record.shift_rate)}
                           </span>
                           {record.deductions_advances && record.deductions_advances > 0 && (
                             <span className="text-[10px] text-rose-500 font-bold uppercase tracking-tighter">
-                              - PKR {record.deductions_advances.toLocaleString()} (Advance)
+                              - {formatPKR(record.deductions_advances)} (Advance)
                             </span>
                           )}
                         </div>

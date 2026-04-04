@@ -214,12 +214,15 @@ export const dataService = {
   
   testConnection: async (): Promise<{ success: boolean; message: string }> => {
     if (!supabase) {
-      return { success: false, message: 'Supabase configuration missing (VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY)' };
+      return { 
+        success: false, 
+        message: 'Supabase configuration missing. Please go to the Secrets panel in AI Studio and add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.' 
+      };
     }
     try {
-      // Add a 5-second timeout to the connection test
+      // Increased timeout to 10 seconds
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Connection timed out')), 5000)
+        setTimeout(() => reject(new Error('Connection timed out (10s)')), 10000)
       );
       
       const fetchPromise = supabase.from('staff').select('id', { count: 'exact', head: true });
@@ -230,7 +233,26 @@ export const dataService = {
       return { success: true, message: 'Successfully connected to Supabase!' };
     } catch (err: any) {
       console.error('Supabase Connection Test Failed:', err);
-      return { success: false, message: `Connection failed: ${err.message}` };
+      let msg = err.message || 'Unknown error';
+      
+      if (msg === 'Failed to fetch' || msg.includes('NetworkError')) {
+        const url = import.meta.env.VITE_SUPABASE_URL || '';
+        const key = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+        
+        msg = 'Network Error: Failed to fetch. ';
+        
+        if (!url.startsWith('https://')) {
+          msg += 'Your Supabase URL must start with https://. ';
+        }
+        
+        if (key && !key.startsWith('eyJ')) {
+          msg += 'Your Supabase Anon Key looks invalid (it should start with "eyJ"). ';
+        }
+        
+        msg += 'Common causes: 1) Incorrect URL/Key in Secrets. 2) Supabase project is paused. 3) AdBlocker/VPN is blocking the request. 4) The staff table does not exist in your public schema.';
+      }
+      
+      return { success: false, message: `Connection failed: ${msg}` };
     }
   }
 };

@@ -43,6 +43,7 @@ import { useUIStore } from '../store';
 import { dataService } from '../dataService';
 import { Patient, District, PatientStatus, Staff } from '../types';
 import { format } from 'date-fns';
+import { formatPKR, formatPKDate, formatCNIC, formatPKPhone } from '../lib/utils';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useForm } from 'react-hook-form';
@@ -188,7 +189,7 @@ const PatientCard = ({ patient, staff, onClick }: { patient: Patient, staff: Sta
         </div>
         <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
           <Calendar size={10} />
-          Admitted {format(new Date(patient.admission_date), 'MMM dd, yyyy')}
+          Admitted {formatPKDate(patient.admission_date)}
         </div>
       </div>
 
@@ -791,7 +792,7 @@ export const PatientModule = () => {
                           </div>
                           <div>
                             <p className="text-sm font-bold text-slate-900">{p.full_name}</p>
-                            <p className="text-[10px] text-slate-400 font-bold">{p.contact}</p>
+                            <p className="text-[10px] text-slate-400 font-bold">{formatPKPhone(p.contact)}</p>
                           </div>
                         </div>
                       </td>
@@ -906,15 +907,15 @@ export const PatientModule = () => {
                       <div className="space-y-4">
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">CNIC</p>
-                          <p className="text-sm font-bold text-slate-900">{selectedPatient.cnic}</p>
+                          <p className="text-sm font-bold text-slate-900">{formatCNIC(selectedPatient.cnic)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Contact</p>
-                          <p className="text-sm font-bold text-sky-600">{selectedPatient.contact}</p>
+                          <p className="text-sm font-bold text-sky-600">{formatPKPhone(selectedPatient.contact)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Admission</p>
-                          <p className="text-sm font-bold text-slate-900">{format(new Date(selectedPatient.admission_date), 'MMM dd, yyyy')}</p>
+                          <p className="text-sm font-bold text-slate-900">{formatPKDate(selectedPatient.admission_date)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Address</p>
@@ -935,7 +936,7 @@ export const PatientModule = () => {
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Contact</p>
-                          <p className="text-sm font-bold text-sky-600">{selectedPatient.guardian_contact}</p>
+                          <p className="text-sm font-bold text-sky-600">{formatPKPhone(selectedPatient.guardian_contact)}</p>
                         </div>
                       </div>
                     </section>
@@ -1046,7 +1047,7 @@ export const PatientModule = () => {
                       <div className="space-y-6">
                         <div className="p-4 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-100">
                           <p className="text-[10px] font-bold text-indigo-200 uppercase mb-1">{selectedPatient.billing_package} Package</p>
-                          <p className="text-2xl font-black">PKR {selectedPatient.billing_rate.toLocaleString()}</p>
+                          <p className="text-2xl font-black">{formatPKR(selectedPatient.billing_rate)}</p>
                           <p className="text-[10px] text-indigo-100 mt-2">Due on 1st of every month</p>
                         </div>
                         <div className="space-y-3">

@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
 import { format } from 'date-fns';
+import { formatPKDate, formatPKTime } from '../lib/utils';
 
 export const NotificationsModule = () => {
   const { notifications, markNotificationAsRead, clearNotifications } = useUIStore();
@@ -94,7 +95,7 @@ export const NotificationsModule = () => {
                       <h4 className="font-black text-slate-900 tracking-tight">{n.title}</h4>
                       <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                         <Clock size={12} />
-                        {format(new Date(n.timestamp), 'MMM dd, HH:mm')}
+                        {formatPKDate(n.timestamp)} {formatPKTime(n.timestamp)}
                       </div>
                     </div>
                     <p className="text-sm text-slate-600 font-medium leading-relaxed">{n.message}</p>

@@ -64,6 +64,9 @@ import { geminiService } from './services/geminiService';
 import { Loader2, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
+import { supabase } from './lib/supabase';
+import { DashboardModule } from './components/DashboardModule';
+
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -131,269 +134,6 @@ const StatCard = ({ title, value, change, icon: Icon, color }: any) => (
   </div>
 );
 
-// --- Modules ---
-
-const DashboardModule = ({ staff, patients, setActiveTab }: { staff: Staff[], patients: Patient[], setActiveTab: (tab: string) => void }) => {
-  const [insights, setInsights] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  useEffect(() => {
-    const generateInsights = async () => {
-      setIsGenerating(true);
-      try {
-        const prompt = `Based on the following data, provide a brief (3-4 bullet points) strategic summary for NursingCare.pk:
-          - Total Staff: ${staff.length}
-          - Active Patients: ${patients.filter(p => p.status === 'Active').length}
-          - Districts: ${staff.map(s => s.official_district).join(', ')}
-          - Designations: ${staff.map(s => s.designation).join(', ')}
-          Focus on staff distribution, patient care capacity, and potential growth areas in Karachi.`;
-        const result = await geminiService.fastTask(prompt);
-        setInsights(result);
-      } catch (error) {
-        console.error('Failed to generate insights:', error);
-      } finally {
-        setIsGenerating(false);
-      }
-    };
-    generateInsights();
-  }, [staff, patients]);
-
-  const districtData = [
-    { name: 'Central', count: 45 },
-    { name: 'East', count: 78 },
-    { name: 'South', count: 112 },
-    { name: 'West', count: 56 },
-    { name: 'Korangi', count: 89 },
-    { name: 'Malir', count: 42 },
-    { name: 'Keamari', count: 31 },
-  ];
-
-  const designationData = [
-    { name: 'Doctors', value: 12 },
-    { name: 'Nurses', value: 156 },
-    { name: 'Attendants', value: 245 },
-    { name: 'Others', value: 40 },
-  ];
-
-  const COLORS = ['#0d9488', '#0ea5e9', '#6366f1', '#8b5cf6'];
-
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* AI Insights and Supabase Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <div className="bg-gradient-to-r from-teal-600 to-sky-600 p-1 rounded-[32px] shadow-lg shadow-teal-100">
-            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-[30px] flex flex-col md:flex-row items-center gap-6">
-              <div className="w-16 h-16 bg-teal-600 rounded-2xl flex items-center justify-center text-white shadow-inner shrink-0">
-                <Sparkles size={32} className="animate-pulse" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-black text-teal-900 uppercase tracking-widest">NursingCare AI Insights</h3>
-                  <div className="px-2 py-0.5 bg-teal-100 text-teal-600 rounded-full text-[10px] font-bold uppercase">Beta</div>
-                </div>
-                {isGenerating ? (
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Loader2 size={14} className="animate-spin" />
-                    <span className="text-sm font-medium italic">Analyzing current data trends...</span>
-                  </div>
-                ) : insights ? (
-                  <div className="prose prose-sm max-w-none prose-teal">
-                    <ReactMarkdown>{insights}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500 italic">No insights available at this time.</p>
-                )}
-              </div>
-              <button 
-                onClick={() => window.location.reload()}
-                className="px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shrink-0"
-              >
-                Refresh Data
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-md border border-slate-100 rounded-[32px] shadow-sm overflow-hidden h-full">
-          <SupabaseStatus />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Staff" 
-          value={staff.length} 
-          change={12} 
-          icon={Users} 
-          color="bg-teal-600" 
-        />
-        <StatCard 
-          title="Active Patients" 
-          value={patients.filter(p => p.status === 'Active').length} 
-          change={8} 
-          icon={UserRound} 
-          color="bg-sky-600" 
-        />
-        <StatCard 
-          title="Monthly Revenue" 
-          value="PKR 4.2M" 
-          change={15} 
-          icon={TrendingUp} 
-          color="bg-indigo-600" 
-        />
-        <StatCard 
-          title="Staff On Duty" 
-          value={staff.filter(s => s.status === 'Active').length} 
-          change={-2} 
-          icon={Activity} 
-          color="bg-violet-600" 
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-lg font-bold text-slate-900">Recent Staff Members</h3>
-            <button 
-              onClick={() => setActiveTab('staff')}
-              className="text-teal-600 text-sm font-bold hover:underline"
-            >
-              View All
-            </button>
-          </div>
-          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {staff.slice(0, 10).map((s) => (
-              <div key={s.id} className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-colors group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-lg">
-                    {s.full_name.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900">{s.full_name}</h4>
-                    <p className="text-sm text-slate-500">{s.designation} • {s.official_district}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-right hidden md:block">
-                    <p className="text-sm font-bold text-slate-900">{s.assigned_id}</p>
-                    <p className="text-xs text-slate-400">Staff ID</p>
-                  </div>
-                  <div className={cn(
-                    "px-3 py-1 rounded-full text-xs font-bold",
-                    s.status === 'Active' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
-                  )}>
-                    {s.status}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {staff.length === 0 && (
-              <div className="text-center py-8 text-slate-400 italic text-sm">No staff records found.</div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-lg font-bold text-slate-900">Recent Admissions</h3>
-            <button 
-              onClick={() => setActiveTab('patients')}
-              className="text-teal-600 text-sm font-bold hover:underline"
-            >
-              View All
-            </button>
-          </div>
-          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {patients.slice(0, 10).map((p) => (
-              <div key={p.id} className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-colors group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-lg">
-                    {p.full_name.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900">{p.full_name}</h4>
-                    <p className="text-sm text-slate-500">{p.medical_condition} • {p.district}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-right hidden md:block">
-                    <p className="text-sm font-bold text-slate-900">{format(new Date(p.admission_date), 'MMM dd, yyyy')}</p>
-                    <p className="text-xs text-slate-400">Admission Date</p>
-                  </div>
-                  <div className={cn(
-                    "px-3 py-1 rounded-full text-xs font-bold",
-                    p.status === 'Active' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
-                  )}>
-                    {p.status}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {patients.length === 0 && (
-              <div className="text-center py-8 text-slate-400 italic text-sm">No patient records found.</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-900 mb-6">Staff Distribution by District</h3>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={districtData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                <Tooltip 
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="count" fill="#0d9488" radius={[6, 6, 0, 0]} barSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-900 mb-6">Staff by Designation</h3>
-          <div className="h-[300px] flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={designationData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {designationData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-col gap-3 ml-4">
-              {designationData.map((item, i) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }} />
-                  <span className="text-sm text-slate-600 font-medium">{item.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // --- Main App ---
 
 export default function App() {
@@ -408,11 +148,12 @@ export default function App() {
       setIsLoading(true);
       try {
         // Test connection first
+        console.log('Starting Supabase connection test...');
         const connection = await dataService.testConnection();
         if (connection.success) {
-          toast.success(connection.message);
+          console.log('Supabase connection successful!');
         } else {
-          toast.error(connection.message);
+          console.error('Supabase connection failed:', connection.message);
         }
 
         const [staffData, patientData] = await Promise.all([
@@ -427,7 +168,34 @@ export default function App() {
         setIsLoading(false);
       }
     };
+    
     fetchData();
+
+    // --- LIVE AI BRIDGE (Approach B: Postgres Changes) ---
+    if (supabase) {
+      console.log('Initializing Real-time AI Bridge...');
+      
+      const staffChannel = supabase.channel('app-staff-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, async (payload) => {
+          console.log('Live Staff Update:', payload);
+          const updatedStaff = await dataService.getStaff();
+          setStaff(updatedStaff);
+        })
+        .subscribe();
+
+      const patientChannel = supabase.channel('app-patient-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'patients' }, async (payload) => {
+          console.log('Live Patient Update:', payload);
+          const updatedPatients = await dataService.getPatients();
+          setPatients(updatedPatients);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(staffChannel);
+        supabase.removeChannel(patientChannel);
+      };
+    }
   }, []);
 
   const unreadNotifications = notifications.filter(n => !n.read).length;
