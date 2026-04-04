@@ -1,0 +1,77 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: staff
+// Fields:
+//   - assignedId: string (required)
+//   - name: string (required)
+//   - designation: string (required)
+//   - contact: string (required)
+//   - status: string (active/inactive)
+//   - baseSalary: number
+//
+// Collection: patients
+// Fields:
+//   - name: string (required)
+//   - address: string (required)
+//   - contact: string (required)
+//   - status: string (active/discharged/pending)
+//
+// Collection: payroll
+// Fields:
+//   - staffId: string (required)
+//   - month: string (required)
+//   - year: number (required)
+//   - total: number (required)
+//   - status: string (paid/pending)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "nursingcareinfo21@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /staff/{staffId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /patients/{patientId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /payroll/{payrollId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /documents/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+  }
+}

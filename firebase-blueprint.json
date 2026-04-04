@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "Staff": {
+      "title": "Staff",
+      "description": "Medical staff members including nurses, assistants, and coordinators.",
+      "type": "object",
+      "properties": {
+        "assignedId": { "type": "string" },
+        "name": { "type": "string" },
+        "fatherHusbandName": { "type": "string" },
+        "dob": { "type": "string" },
+        "gender": { "type": "string" },
+        "cnic": { "type": "string" },
+        "designation": { "type": "string" },
+        "contact": { "type": "string" },
+        "district": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "preferredShift": { "type": "string", "enum": ["Day", "Night"] },
+        "baseSalary": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["assignedId", "name", "designation", "contact"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "Patients receiving medical services at their residence.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "contact": { "type": "string" },
+        "diagnosis": { "type": "string" },
+        "assignedStaffId": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["active", "discharged", "pending"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "address", "contact", "status"]
+    },
+    "Payroll": {
+      "title": "Payroll",
+      "description": "15-day salary records for staff.",
+      "type": "object",
+      "properties": {
+        "staffId": { "type": "string" },
+        "periodStart": { "type": "string", "format": "date" },
+        "periodEnd": { "type": "string", "format": "date" },
+        "baseSalary": { "type": "number" },
+        "bonus": { "type": "number" },
+        "deductions": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["paid", "pending"] },
+        "paymentDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["staffId", "periodStart", "periodEnd", "total", "status"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "Uploaded documents for staff or patients.",
+      "type": "object",
+      "properties": {
+        "entityType": { "type": "string", "enum": ["staff", "patient"] },
+        "entityId": { "type": "string" },
+        "docType": { "type": "string" },
+        "url": { "type": "string" },
+        "name": { "type": "string" },
+        "uploadDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["entityType", "entityId", "docType", "url"]
+    }
+  },
+  "firestore": {
+    "/staff": { "schema": "Staff", "description": "Collection of medical staff." },
+    "/patients": { "schema": "Patient", "description": "Collection of patients." },
+    "/payroll": { "schema": "Payroll", "description": "Collection of payroll records." },
+    "/documents": { "schema": "Document", "description": "Collection of document metadata." }
+  }
+}

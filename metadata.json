@@ -1,0 +1,8 @@
+{
+  "name": "Nursing Care Management Dashboard",
+  "description": "A comprehensive dashboard for managing patients, nursing staff, payroll, and medical documentation.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
