@@ -1,6 +1,21 @@
-import { Staff, Patient, District, Designation } from './types';
+import { Staff, Patient, District, Designation, AppUser } from './types';
 import { INITIAL_STAFF } from './staffData';
 import { supabase } from './lib/supabase';
+import { db, auth } from './firebase';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  orderBy,
+  Timestamp,
+  serverTimestamp
+} from 'firebase/firestore';
 
 const MOCK_PATIENTS: Patient[] = [
   {
@@ -253,6 +268,90 @@ export const dataService = {
       }
       
       return { success: false, message: `Connection failed: ${msg}` };
+    }
+  },
+  
+  // --- User Management (Firestore) ---
+  
+  getUsers: async (): Promise<AppUser[]> => {
+    try {
+      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({
+        ...doc.data(),
+        uid: doc.id
+      })) as AppUser[];
+    } catch (error) {
+      console.error('Error getting users:', error);
+      return [];
+    }
+  },
+  
+  getUserProfile: async (uid: string): Promise<AppUser | null> => {
+    try {
+      const docRef = doc(db, 'users', uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { ...docSnap.data(), uid: docSnap.id } as AppUser;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      return null;
+    }
+  },
+  
+  syncUserProfile: async (user: any): Promise<AppUser> => {
+    const docRef = doc(db, 'users', user.uid);
+    const docSnap = await getDoc(docRef);
+    
+    const userData = {
+      email: user.email,
+      displayName: user.displayName || user.email.split('@')[0],
+      photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=random`,
+      lastLogin: new Date().toISOString(),
+    };
+    
+    if (!docSnap.exists()) {
+      // New user
+      const newUser: any = {
+        ...userData,
+        role: user.email === 'nursingcareinfo21@gmail.com' ? 'admin' : 'viewer',
+        createdAt: new Date().toISOString(),
+      };
+      await setDoc(docRef, newUser);
+      return { ...newUser, uid: user.uid };
+    } else {
+      // Existing user
+      await updateDoc(docRef, userData);
+      return { ...docSnap.data(), ...userData, uid: user.uid } as AppUser;
+    }
+  },
+  
+  updateUserRole: async (uid: string, role: 'admin' | 'staff' | 'viewer'): Promise<void> => {
+    try {
+      if (role === 'admin') {
+        const users = await dataService.getUsers();
+        const adminCount = users.filter(u => u.role === 'admin').length;
+        if (adminCount >= 2) {
+          throw new Error('Maximum limit of 2 administrators reached. Please revoke admin access from another user first.');
+        }
+      }
+      const docRef = doc(db, 'users', uid);
+      await updateDoc(docRef, { role });
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error;
+    }
+  },
+  
+  deleteUser: async (uid: string): Promise<void> => {
+    try {
+      const docRef = doc(db, 'users', uid);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error;
     }
   }
 };

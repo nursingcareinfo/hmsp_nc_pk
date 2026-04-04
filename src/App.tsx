@@ -64,6 +64,16 @@ import { geminiService } from './services/geminiService';
 import { Loader2, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  onAuthStateChanged, 
+  signOut,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { auth } from './firebase';
+import { SettingsModule } from './components/SettingsModule';
+import { AppUser } from './types';
 import { supabase } from './lib/supabase';
 import { DashboardModule } from './components/DashboardModule';
 
@@ -142,8 +152,51 @@ export default function App() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const profile = await dataService.syncUserProfile(user);
+          setCurrentUser(profile);
+        } catch (error) {
+          console.error('Error syncing user profile:', error);
+          toast.error('Failed to sync user profile');
+        }
+      } else {
+        setCurrentUser(null);
+      }
+      setIsAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      toast.success('Logged in successfully');
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Failed to login');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast.success('Logged out successfully');
+    } catch (error) {
+      toast.error('Failed to logout');
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role === 'viewer') return;
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -196,7 +249,7 @@ export default function App() {
         supabase.removeChannel(patientChannel);
       };
     }
-  }, []);
+  }, [currentUser]);
 
   const unreadNotifications = notifications.filter(n => !n.read).length;
 
@@ -259,13 +312,18 @@ export default function App() {
           </nav>
 
           <div className="mt-auto space-y-2">
-            <SidebarItem 
-              icon={Settings} 
-              label="Settings" 
-              active={false} 
-              onClick={() => {}} 
-            />
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-500 hover:bg-rose-50/10 transition-all">
+            {currentUser?.role === 'admin' && (
+              <SidebarItem 
+                icon={Settings} 
+                label="Settings" 
+                active={activeTab === 'settings'} 
+                onClick={() => setActiveTab('settings')} 
+              />
+            )}
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-500 hover:bg-rose-50/10 transition-all"
+            >
               <LogOut size={20} />
               {isSidebarOpen && <span className="font-medium">Logout</span>}
             </button>
@@ -317,13 +375,17 @@ export default function App() {
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
             <div className="hidden sm:flex flex-col text-right">
-              <span className={cn("text-sm font-bold", theme === 'dark' ? "text-white" : "text-slate-900")}>Admin Portal</span>
-              <span className="text-[10px] font-bold text-teal-600 uppercase">Super Admin</span>
+              <span className={cn("text-sm font-bold", theme === 'dark' ? "text-white" : "text-slate-900")}>
+                {currentUser?.displayName || 'Admin Portal'}
+              </span>
+              <span className="text-[10px] font-bold text-teal-600 uppercase">
+                {currentUser?.role === 'admin' ? (currentUser.email === 'nursingcareinfo21@gmail.com' ? 'Super Admin' : 'Admin') : currentUser?.role || 'Viewer'}
+              </span>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-sky-500 p-0.5 shadow-lg shadow-teal-100">
               <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center overflow-hidden">
                 <img 
-                  src="https://picsum.photos/seed/admin/100/100" 
+                  src={currentUser?.photoURL || "https://picsum.photos/seed/admin/100/100"} 
                   alt="Admin" 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
@@ -336,7 +398,41 @@ export default function App() {
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <AnimatePresence mode="wait">
-            {isLoading ? (
+            {isAuthLoading ? (
+              <motion.div 
+                key="auth-loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="h-full flex flex-col items-center justify-center gap-4"
+              >
+                <div className="w-12 h-12 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin" />
+                <p className="text-slate-500 font-medium animate-pulse">Authenticating...</p>
+              </motion.div>
+            ) : !currentUser ? (
+              <motion.div 
+                key="login"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="h-full flex flex-col items-center justify-center gap-8"
+              >
+                <div className="text-center space-y-4">
+                  <Logo theme={theme} size="lg" />
+                  <h1 className="text-4xl font-black text-slate-900 tracking-tight">Welcome to Admin Portal</h1>
+                  <p className="text-slate-500 font-medium max-w-md mx-auto">
+                    Please sign in with your authorized Google account to access the management dashboard.
+                  </p>
+                </div>
+                <button 
+                  onClick={handleLogin}
+                  className="flex items-center gap-4 px-8 py-4 bg-white border border-slate-200 rounded-[32px] font-bold text-slate-700 shadow-xl hover:shadow-2xl hover:scale-105 transition-all group"
+                >
+                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+                  Sign in with Google
+                </button>
+              </motion.div>
+            ) : isLoading ? (
               <motion.div 
                 key="loading"
                 initial={{ opacity: 0 }}
@@ -346,6 +442,29 @@ export default function App() {
               >
                 <div className="w-12 h-12 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin" />
                 <p className="text-slate-500 font-medium animate-pulse">Loading dashboard data...</p>
+              </motion.div>
+            ) : currentUser.role === 'viewer' ? (
+              <motion.div 
+                key="no-access"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-6"
+              >
+                <div className="w-20 h-20 bg-amber-50 text-amber-600 rounded-[32px] flex items-center justify-center border border-amber-100">
+                  <AlertCircle size={40} />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Access Restricted</h2>
+                  <p className="text-slate-500 font-medium leading-relaxed">
+                    Your account ({currentUser.email}) is currently pending authorization. Please contact the Super Admin to grant you admin access.
+                  </p>
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="px-6 py-2.5 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all"
+                >
+                  Logout
+                </button>
               </motion.div>
             ) : (
               <motion.div
@@ -361,6 +480,7 @@ export default function App() {
                 {activeTab === 'scheduling' && <SchedulingModule />}
                 {activeTab === 'payroll' && <PayrollModule staff={staff} />}
                 {activeTab === 'notifications' && <NotificationsModule />}
+                {activeTab === 'settings' && <SettingsModule currentUser={currentUser} />}
               </motion.div>
             )}
           </AnimatePresence>

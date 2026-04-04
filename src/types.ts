@@ -216,6 +216,16 @@ export interface Notification {
   read: boolean;
 }
 
+export interface AppUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  role: 'admin' | 'staff' | 'viewer';
+  createdAt: string;
+  lastLogin: string;
+}
+
 export interface Payroll {
   id: string;
   staff_id: string;

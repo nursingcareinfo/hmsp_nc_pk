@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import { Staff, Patient, Notification, District, Designation, StaffStatus, PatientStatus, Payroll, StaffCategory } from './types';
 
 interface UIState {
-  activeTab: 'dashboard' | 'staff' | 'patients' | 'scheduling' | 'notifications' | 'payroll';
-  setActiveTab: (tab: 'dashboard' | 'staff' | 'patients' | 'scheduling' | 'notifications' | 'payroll') => void;
+  activeTab: 'dashboard' | 'staff' | 'patients' | 'scheduling' | 'notifications' | 'payroll' | 'settings';
+  setActiveTab: (tab: 'dashboard' | 'staff' | 'patients' | 'scheduling' | 'notifications' | 'payroll' | 'settings') => void;
   
   theme: 'light' | 'dark';
   toggleTheme: () => void;

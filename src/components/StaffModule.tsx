@@ -190,73 +190,173 @@ const StatusBadge = ({ status }: { status: StaffStatus }) => {
   );
 };
 
-const StaffCard = ({ staff, onClick }: { staff: Staff, onClick: () => void }) => (
-  <motion.div 
-    layout
-    initial={{ opacity: 0, scale: 0.9 }}
-    animate={{ opacity: 1, scale: 1 }}
-    whileHover={{ y: -5 }}
-    onClick={onClick}
-    className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden"
-  >
-    <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-      <button 
-        onClick={(e) => { e.stopPropagation(); onClick(); }}
-        className="p-2 hover:bg-teal-50 rounded-xl text-slate-400 hover:text-teal-600 transition-colors"
-        title="Edit Staff"
-      >
-        <Edit2 size={16} />
-      </button>
-      <button className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-teal-600 transition-colors">
-        <MoreVertical size={16} />
-      </button>
-    </div>
+const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void> }) => {
+  const [isQuickEditing, setIsQuickEditing] = useState(false);
+  const [editBuffer, setEditBuffer] = useState({
+    full_name: staff.full_name,
+    status: staff.status,
+    shift_rate: staff.shift_rate
+  });
+  const [isSaving, setIsSaving] = useState(false);
 
-    <div className="flex items-center gap-4 mb-6">
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-50 to-sky-50 flex items-center justify-center text-teal-600 font-black text-2xl shadow-inner border border-white">
-        {staff.full_name.charAt(0)}
+  const hasChanges = 
+    editBuffer.full_name !== staff.full_name || 
+    editBuffer.status !== staff.status || 
+    editBuffer.shift_rate !== staff.shift_rate;
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSaving(true);
+    try {
+      await onUpdate(staff.id, editBuffer);
+      setIsQuickEditing(false);
+      toast.success('Staff updated successfully');
+    } catch (error) {
+      toast.error('Failed to update staff');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={!isQuickEditing ? { y: -5 } : {}}
+      onClick={!isQuickEditing ? onClick : undefined}
+      className={cn(
+        "bg-white border p-6 rounded-3xl shadow-sm transition-all relative overflow-hidden",
+        isQuickEditing ? "border-teal-500 ring-2 ring-teal-500/10" : "border-slate-100 hover:shadow-xl cursor-pointer group"
+      )}
+    >
+      <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <button 
+          onClick={(e) => { e.stopPropagation(); setIsQuickEditing(!isQuickEditing); }}
+          className={cn(
+            "p-2 rounded-xl transition-colors",
+            isQuickEditing ? "bg-teal-600 text-white" : "hover:bg-teal-50 text-slate-400 hover:text-teal-600"
+          )}
+          title={isQuickEditing ? "Cancel Editing" : "Quick Edit"}
+        >
+          {isQuickEditing ? <X size={16} /> : <Edit2 size={16} />}
+        </button>
+        {!isQuickEditing && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="p-2 hover:bg-teal-50 rounded-xl text-slate-400 hover:text-teal-600 transition-colors"
+            title="Full Edit"
+          >
+            <MoreVertical size={16} />
+          </button>
+        )}
       </div>
-      <div>
-        <h4 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors">{staff.full_name}</h4>
-        <p className="text-xs text-slate-500 font-medium">{staff.category || 'Other'} • {staff.designation}</p>
-        <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-400 font-bold uppercase">
-          <MapPin size={10} />
-          {staff.official_district}
+
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-50 to-sky-50 flex items-center justify-center text-teal-600 font-black text-2xl shadow-inner border border-white">
+          {staff.full_name.charAt(0)}
+        </div>
+        <div className="flex-1">
+          {isQuickEditing ? (
+            <input 
+              autoFocus
+              value={editBuffer.full_name}
+              onChange={(e) => setEditBuffer(prev => ({ ...prev, full_name: e.target.value }))}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-teal-500"
+            />
+          ) : (
+            <h4 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors">{staff.full_name}</h4>
+          )}
+          <p className="text-xs text-slate-500 font-medium">{staff.category || 'Other'} • {staff.designation}</p>
+          <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-400 font-bold uppercase">
+            <MapPin size={10} />
+            {staff.official_district}
+          </div>
         </div>
       </div>
-    </div>
 
-    <div className="flex items-center justify-between mb-6">
-      <div className="flex flex-col gap-1.5">
-        <StatusBadge status={staff.status} />
-        <span className="px-2 py-0.5 bg-teal-50 text-teal-600 rounded-md text-[9px] font-black uppercase tracking-tighter border border-teal-100 w-fit">
-          {formatPKR(staff.shift_rate)}/Shift
-        </span>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-1.5 flex-1">
+          {isQuickEditing ? (
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              <select 
+                value={editBuffer.status}
+                onChange={(e) => setEditBuffer(prev => ({ ...prev, status: e.target.value as StaffStatus }))}
+                className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-[10px] font-bold uppercase focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="Active">Active</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-bold text-slate-400">Rs.</span>
+                <input 
+                  type="number"
+                  value={editBuffer.shift_rate}
+                  onChange={(e) => setEditBuffer(prev => ({ ...prev, shift_rate: Number(e.target.value) }))}
+                  className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-[10px] font-bold focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <StatusBadge status={staff.status} />
+              <span className="px-2 py-0.5 bg-teal-50 text-teal-600 rounded-md text-[9px] font-black uppercase tracking-tighter border border-teal-100 w-fit">
+                {formatPKR(staff.shift_rate)}/Shift
+              </span>
+            </>
+          )}
+        </div>
+        {!isQuickEditing && (
+          <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+            <Clock size={10} />
+            Joined {formatPKDate(staff.hire_date)}
+          </div>
+        )}
       </div>
-      <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-        <Clock size={10} />
-        Joined {formatPKDate(staff.hire_date)}
-      </div>
-    </div>
 
-    <div className="grid grid-cols-2 gap-3">
-      <button 
-        onClick={(e) => { e.stopPropagation(); window.open(`tel:${staff.contact_1}`); }}
-        className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-teal-50 hover:text-teal-600 transition-all"
-      >
-        <Phone size={14} />
-        Call
-      </button>
-      <button 
-        onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${staff.contact_1.replace(/\s+/g, '')}`); }}
-        className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all"
-      >
-        <MessageSquare size={14} />
-        WhatsApp
-      </button>
-    </div>
-  </motion.div>
-);
+      <AnimatePresence>
+        {isQuickEditing && hasChanges && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="mb-4"
+          >
+            <button 
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full py-2.5 bg-teal-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-teal-200 hover:bg-teal-700 transition-all flex items-center justify-center gap-2"
+            >
+              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              Save Changes
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!isQuickEditing && (
+        <div className="grid grid-cols-2 gap-3">
+          <button 
+            onClick={(e) => { e.stopPropagation(); window.open(`tel:${staff.contact_1}`); }}
+            className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-teal-50 hover:text-teal-600 transition-all"
+          >
+            <Phone size={14} />
+            Call
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${staff.contact_1.replace(/\s+/g, '')}`); }}
+            className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all"
+          >
+            <MessageSquare size={14} />
+            WhatsApp
+          </button>
+        </div>
+      )}
+    </motion.div>
+  );
+};
 
 const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
   const [step, setStep] = useState(1);
@@ -352,7 +452,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
@@ -928,7 +1028,16 @@ export const StaffModule = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           >
             {paginatedStaff.map(s => (
-              <StaffCard key={s.id} staff={s} onClick={() => setSelectedStaff(s)} />
+              <StaffCard 
+                key={s.id} 
+                staff={s} 
+                onClick={() => setSelectedStaff(s)} 
+                onEdit={() => {
+                  setSelectedStaff(s);
+                  setIsEditModalOpen(true);
+                }}
+                onUpdate={handleUpdateStaff}
+              />
             ))}
           </motion.div>
         ) : (

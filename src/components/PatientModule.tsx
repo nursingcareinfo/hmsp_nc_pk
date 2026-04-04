@@ -142,30 +142,85 @@ const StatusBadge = ({ status }: { status: PatientStatus }) => {
   );
 };
 
-const PatientCard = ({ patient, staff, onClick }: { patient: Patient, staff: Staff[], onClick: () => void }) => {
+const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate }: { patient: Patient, staff: Staff[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void> }) => {
   const assignedStaff = staff.find(s => s.id === patient.assigned_staff_id);
+  const [isQuickEditing, setIsQuickEditing] = useState(false);
+  const [editBuffer, setEditBuffer] = useState({
+    full_name: patient.full_name,
+    status: patient.status,
+    billing_rate: patient.billing_rate
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const hasChanges = 
+    editBuffer.full_name !== patient.full_name || 
+    editBuffer.status !== patient.status || 
+    editBuffer.billing_rate !== patient.billing_rate;
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSaving(true);
+    try {
+      await onUpdate(patient.id, editBuffer);
+      setIsQuickEditing(false);
+      toast.success('Patient updated successfully');
+    } catch (error) {
+      toast.error('Failed to update patient');
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   return (
     <motion.div 
       layout
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ y: -5 }}
-      onClick={onClick}
-      className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden"
+      whileHover={!isQuickEditing ? { y: -5 } : {}}
+      onClick={!isQuickEditing ? onClick : undefined}
+      className={cn(
+        "bg-white border p-6 rounded-3xl shadow-sm transition-all relative overflow-hidden",
+        isQuickEditing ? "border-sky-500 ring-2 ring-sky-500/10" : "border-slate-100 hover:shadow-xl cursor-pointer group"
+      )}
     >
-      <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-teal-600">
-          <MoreVertical size={18} />
+      <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <button 
+          onClick={(e) => { e.stopPropagation(); setIsQuickEditing(!isQuickEditing); }}
+          className={cn(
+            "p-2 rounded-xl transition-colors",
+            isQuickEditing ? "bg-sky-600 text-white" : "hover:bg-sky-50 text-slate-400 hover:text-sky-600"
+          )}
+          title={isQuickEditing ? "Cancel Editing" : "Quick Edit"}
+        >
+          {isQuickEditing ? <X size={16} /> : <Edit2 size={16} />}
         </button>
+        {!isQuickEditing && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-sky-600 transition-colors"
+            title="Full Edit"
+          >
+            <MoreVertical size={16} />
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-4 mb-6">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-50 to-indigo-50 flex items-center justify-center text-sky-600 font-black text-2xl shadow-inner border border-white">
           {patient.full_name.charAt(0)}
         </div>
-        <div>
-          <h4 className="font-bold text-slate-900 group-hover:text-sky-600 transition-colors">{patient.full_name}</h4>
+        <div className="flex-1">
+          {isQuickEditing ? (
+            <input 
+              autoFocus
+              value={editBuffer.full_name}
+              onChange={(e) => setEditBuffer(prev => ({ ...prev, full_name: e.target.value }))}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-sky-500"
+            />
+          ) : (
+            <h4 className="font-bold text-slate-900 group-hover:text-sky-600 transition-colors">{patient.full_name}</h4>
+          )}
           <p className="text-xs text-slate-500 font-medium">{patient.medical_condition}</p>
           <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-400 font-bold uppercase">
             <MapPin size={10} />
@@ -175,74 +230,125 @@ const PatientCard = ({ patient, staff, onClick }: { patient: Patient, staff: Sta
       </div>
 
       <div className="flex items-center justify-between mb-6">
-        <div className="flex flex-col gap-1.5">
-          <StatusBadge status={patient.status} />
-          {patient.advance_payment_received ? (
-            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md text-[9px] font-black uppercase tracking-tighter border border-emerald-100 w-fit">
-              Advance Paid
-            </span>
+        <div className="flex flex-col gap-1.5 flex-1">
+          {isQuickEditing ? (
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              <select 
+                value={editBuffer.status}
+                onChange={(e) => setEditBuffer(prev => ({ ...prev, status: e.target.value as PatientStatus }))}
+                className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-[10px] font-bold uppercase focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Discharged">Discharged</option>
+              </select>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-bold text-slate-400">Rs.</span>
+                <input 
+                  type="number"
+                  value={editBuffer.billing_rate}
+                  onChange={(e) => setEditBuffer(prev => ({ ...prev, billing_rate: Number(e.target.value) }))}
+                  className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-[10px] font-bold focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+            </div>
           ) : (
-            <span className="px-2 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[9px] font-black uppercase tracking-tighter border border-rose-100 w-fit">
-              Advance Pending
-            </span>
+            <>
+              <StatusBadge status={patient.status} />
+              {patient.advance_payment_received ? (
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md text-[9px] font-black uppercase tracking-tighter border border-emerald-100 w-fit">
+                  Advance Paid
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[9px] font-black uppercase tracking-tighter border border-rose-100 w-fit">
+                  Advance Pending
+                </span>
+              )}
+            </>
           )}
         </div>
-        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-          <Calendar size={10} />
-          Admitted {formatPKDate(patient.admission_date)}
-        </div>
-      </div>
-
-      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
-        <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Assigned Caregiver</p>
-        {assignedStaff ? (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white text-xs font-bold">
-              {assignedStaff.full_name.charAt(0)}
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-900">{assignedStaff.full_name}</p>
-              <p className="text-[10px] text-slate-500">{assignedStaff.designation}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-amber-600">
-            <AlertCircle size={14} />
-            <span className="text-xs font-bold">Unassigned</span>
+        {!isQuickEditing && (
+          <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+            <Calendar size={10} />
+            Admitted {formatPKDate(patient.admission_date)}
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <button 
-          onClick={(e) => { e.stopPropagation(); window.open(`tel:${patient.contact}`); }}
-          className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-sky-50 hover:text-sky-600 transition-all"
-        >
-          <Phone size={14} />
-          Call
-        </button>
-        <button 
-          onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${patient.contact.replace(/\s+/g, '')}`); }}
-          className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all"
-        >
-          <MessageSquare size={14} />
-          WhatsApp
-        </button>
-      </div>
+      <AnimatePresence>
+        {isQuickEditing && hasChanges && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="mb-4"
+          >
+            <button 
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full py-2.5 bg-sky-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-sky-200 hover:bg-sky-700 transition-all flex items-center justify-center gap-2"
+            >
+              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              Save Changes
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!isQuickEditing && (
+        <>
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
+            <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Assigned Caregiver</p>
+            {assignedStaff ? (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white text-xs font-bold">
+                  {assignedStaff.full_name.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900">{assignedStaff.full_name}</p>
+                  <p className="text-[10px] text-slate-500">{assignedStaff.designation}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-amber-600">
+                <AlertCircle size={14} />
+                <span className="text-xs font-bold">Unassigned</span>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={(e) => { e.stopPropagation(); window.open(`tel:${patient.contact}`); }}
+              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-sky-50 hover:text-sky-600 transition-all"
+            >
+              <Phone size={14} />
+              Call
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${patient.contact.replace(/\s+/g, '')}`); }}
+              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all"
+            >
+              <MessageSquare size={14} />
+              WhatsApp
+            </button>
+          </div>
+        </>
+      )}
     </motion.div>
   );
 };
 
-const AddPatientForm = ({ isOpen, onClose, onAdd }: any) => {
+const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraType, setCameraType] = useState<'cnic' | 'form'>('cnic');
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [skipAI, setSkipAI] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm({
+  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm({
     resolver: zodResolver(patientSchema),
-    defaultValues: {
+    defaultValues: initialData || {
       district: 'Karachi South',
       status: 'Active',
       admission_date: new Date().toISOString().split('T')[0],
@@ -255,6 +361,27 @@ const AddPatientForm = ({ isOpen, onClose, onAdd }: any) => {
       duration: '30 Days'
     }
   });
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        reset(initialData);
+      } else {
+        reset({
+          district: 'Karachi South',
+          status: 'Active',
+          admission_date: new Date().toISOString().split('T')[0],
+          billing_rate: 0,
+          payment_method: 'Cash',
+          advance_payment_received: false,
+          advance_payment_date: new Date().toISOString().split('T')[0],
+          service_type: '24/7 Nursing Care',
+          frequency: 'Daily',
+          duration: '30 Days'
+        });
+      }
+    }
+  }, [isOpen, initialData, reset]);
 
   const handleCapture = async (data: string | string[]) => {
     const images = Array.isArray(data) ? data : [data];
@@ -303,7 +430,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd }: any) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
@@ -601,6 +728,7 @@ export const PatientModule = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -654,11 +782,20 @@ export const PatientModule = () => {
   const handleAddPatient = async (data: any) => {
     const newPatient = await dataService.addPatient({
       ...data,
-      admission_date: new Date().toISOString().split('T')[0],
-      billing_package: 'Standard',
+      admission_date: data.admission_date || new Date().toISOString().split('T')[0],
+      billing_package: data.billing_package || 'Standard',
     });
     setPatients([newPatient, ...patients]);
     toast.success('Patient registered successfully!');
+  };
+
+  const handleUpdatePatient = async (data: any) => {
+    if (!selectedPatient) return;
+    const updatedPatient = await dataService.updatePatient(selectedPatient.id, data);
+    setPatients(patients.map(p => p.id === selectedPatient.id ? updatedPatient : p));
+    setSelectedPatient(updatedPatient);
+    setIsEditModalOpen(false);
+    toast.success('Patient profile updated successfully!');
   };
 
   const handleDeletePatient = async () => {
@@ -758,7 +895,17 @@ export const PatientModule = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           >
             {filteredPatients.map(p => (
-              <PatientCard key={p.id} patient={p} staff={staff} onClick={() => setSelectedPatient(p)} />
+              <PatientCard 
+                key={p.id} 
+                patient={p} 
+                staff={staff} 
+                onClick={() => setSelectedPatient(p)} 
+                onEdit={() => {
+                  setSelectedPatient(p);
+                  setIsEditModalOpen(true);
+                }}
+                onUpdate={handleUpdatePatient}
+              />
             ))}
           </motion.div>
         ) : (
@@ -843,6 +990,13 @@ export const PatientModule = () => {
         onClose={() => setIsAddModalOpen(false)} 
         onAdd={handleAddPatient}
       />
+
+      <AddPatientForm 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        onAdd={handleUpdatePatient}
+        initialData={selectedPatient}
+      />
       
       {/* Patient Profile Modal */}
       <AnimatePresence>
@@ -886,7 +1040,11 @@ export const PatientModule = () => {
                   >
                     <Trash2 size={20} />
                   </button>
-                  <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <button 
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all text-white"
+                    title="Edit Patient Profile"
+                  >
                     <Edit2 size={20} />
                   </button>
                   <button onClick={() => setSelectedPatient(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors">

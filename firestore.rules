@@ -41,8 +41,10 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "nursingcareinfo21@gmail.com" && request.auth.token.email_verified == true));
+        (
+          (request.auth.token.email == "nursingcareinfo21@gmail.com" && request.auth.token.email_verified == true) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
     }
 
     // ===============================================================
@@ -71,7 +73,21 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAdmin();
+      
+      // Allow users to create their own profile with correct initial role
+      allow create: if isAuthenticated() && request.auth.uid == userId && (
+        (request.resource.data.role == 'viewer') ||
+        (request.auth.token.email == "nursingcareinfo21@gmail.com" && request.resource.data.role == 'admin')
+      );
+      
+      // Allow users to update their own profile (but not their role)
+      // OR allow admins to update anything
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId && request.resource.data.role == resource.data.role) ||
+        isAdmin()
+      );
+      
+      allow delete: if isAdmin();
     }
   }
 }
