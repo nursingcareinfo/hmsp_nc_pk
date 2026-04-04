@@ -23,7 +23,6 @@ import {
   Download,
   ChevronRight,
   Clock,
-  AlertCircle,
   CheckCircle2,
   Sun,
   Moon,
@@ -65,13 +64,12 @@ import { twMerge } from 'tailwind-merge';
 import { geminiService } from './services/geminiService';
 import { Loader2, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { SUPER_ADMIN_EMAIL } from './constants';
 
 import { SettingsModule } from './components/SettingsModule';
 import { AppUser } from './types';
 import { SignIn } from './components/auth/SignIn';
 import { SignUp } from './components/auth/SignUp';
-import { auth } from './firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { supabase } from './lib/supabase';
 import { DashboardModule } from './components/DashboardModule';
 
@@ -154,39 +152,49 @@ export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authView, setAuthView] = useState<'signIn' | 'signUp'>('signIn');
 
-  // Firebase Auth Listener
+  // Supabase Auth Listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Sync with our app user type and Firestore profile
-        try {
-          const profile = await dataService.syncUserProfile(user);
-          setCurrentUser(profile);
-        } catch (error) {
-          console.error('Error syncing user profile:', error);
-          // Fallback to basic user info if Firestore sync fails
-          setCurrentUser({
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || user.email?.split('@')[0] || 'User',
-            role: 'viewer',
-            photoURL: user.photoURL || undefined,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString()
-          });
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const user = session.user;
+        setCurrentUser({
+          uid: user.id,
+          email: user.email || '',
+          displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          role: user.user_metadata?.role || 'viewer',
+          photoURL: user.user_metadata?.avatar_url || undefined,
+          createdAt: user.created_at,
+          lastLogin: new Date().toISOString()
+        });
       } else {
         setCurrentUser(null);
       }
       setIsAuthLoading(false);
     });
 
-    return () => unsubscribe();
+    // Check for existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const user = session.user;
+        setCurrentUser({
+          uid: user.id,
+          email: user.email || '',
+          displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          role: user.user_metadata?.role || 'viewer',
+          photoURL: user.user_metadata?.avatar_url || undefined,
+          createdAt: user.created_at,
+          lastLogin: new Date().toISOString()
+        });
+      }
+      setIsAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
       toast.success('Logged out successfully');
     } catch (error) {
       toast.error('Failed to logout');
@@ -194,7 +202,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!currentUser || currentUser.role === 'viewer') return;
+    if (!currentUser) return;
 
     const fetchData = async () => {
       setIsLoading(true);
@@ -384,7 +392,7 @@ export default function App() {
                 {currentUser?.displayName || 'Admin Portal'}
               </span>
               <span className="text-[10px] font-bold text-teal-600 uppercase">
-                {currentUser?.role === 'admin' ? (currentUser.email === 'nursingcareinfo21@gmail.com' ? 'Super Admin' : 'Admin') : currentUser?.role || 'Viewer'}
+                {currentUser?.role === 'admin' ? (currentUser.email === SUPER_ADMIN_EMAIL ? 'Super Admin' : 'Admin') : currentUser?.role || 'Viewer'}
               </span>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-sky-500 p-0.5 shadow-lg shadow-teal-100">
@@ -437,7 +445,7 @@ export default function App() {
                 )}
               </motion.div>
             ) : isLoading ? (
-              <motion.div 
+              <motion.div
                 key="loading"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -446,29 +454,6 @@ export default function App() {
               >
                 <div className="w-12 h-12 border-4 border-teal-100 dark:border-teal-900/30 border-t-teal-600 rounded-full animate-spin" />
                 <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Loading dashboard data...</p>
-              </motion.div>
-            ) : currentUser.role === 'viewer' ? (
-              <motion.div 
-                key="no-access"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-6"
-              >
-                <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-[32px] flex items-center justify-center border border-amber-100 dark:border-amber-800">
-                  <AlertCircle size={40} />
-                </div>
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Access Restricted</h2>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                    Your account ({currentUser.email}) is currently pending authorization. Please contact the Super Admin to grant you admin access.
-                  </p>
-                </div>
-                <button 
-                  onClick={handleLogout}
-                  className="px-6 py-2.5 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-800 dark:hover:bg-slate-700 transition-all"
-                >
-                  Logout
-                </button>
               </motion.div>
             ) : (
               <motion.div

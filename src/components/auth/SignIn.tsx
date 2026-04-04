@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { auth } from '../../firebase';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { supabase } from '../../lib/supabase';
 import { Logo } from '../Logo';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -29,18 +28,33 @@ export const SignIn: React.FC<SignInProps> = ({ theme, onSuccess, onToggleView }
     setError(null);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      if (userCredential.user) {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      // Only redirect if a real session exists
+      if (data?.session && data?.user) {
         toast.success('Signed in successfully!');
         onSuccess();
+      } else {
+        const msg = 'Please verify your email before signing in.';
+        setError(msg);
+        toast.error(msg);
       }
     } catch (err: any) {
       console.error('Sign in error:', err);
       let msg = 'Failed to sign in';
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      if (err.message?.includes('Invalid login credentials')) {
         msg = 'Invalid email or password';
-      } else if (err.code === 'auth/too-many-requests') {
+      } else if (err.message?.includes('Email not confirmed')) {
+        msg = 'Please verify your email before signing in';
+      } else if (err.message?.includes('Too many requests')) {
         msg = 'Too many failed login attempts. Please try again later.';
+      } else {
+        msg = err.message || msg;
       }
       setError(msg);
       toast.error(msg);
@@ -49,19 +63,30 @@ export const SignIn: React.FC<SignInProps> = ({ theme, onSuccess, onToggleView }
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleMagicLinkLogin = async () => {
+    if (!email) {
+      toast.error('Please enter your email first');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      if (result.user) {
-        toast.success('Signed in with Google!');
-        onSuccess();
-      }
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email,
+      });
+
+      if (authError) throw authError;
+
+      toast.success('Magic link sent! Check your email.');
     } catch (err: any) {
-      console.error('Google login error:', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        toast.error(err.message || 'Failed to sign in with Google');
-      }
+      console.error('Magic link error:', err);
+      const msg = err.message || 'Failed to send magic link';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -79,11 +104,12 @@ export const SignIn: React.FC<SignInProps> = ({ theme, onSuccess, onToggleView }
 
       <div className="space-y-4">
         <button
-          onClick={handleGoogleLogin}
-          className="w-full py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white font-bold rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-3 group"
+          onClick={handleMagicLinkLogin}
+          disabled={isLoading}
+          className="w-full py-4 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-bold rounded-2xl shadow-lg shadow-teal-600/20 hover:shadow-xl hover:shadow-teal-600/30 transition-all flex items-center justify-center gap-3 group disabled:cursor-not-allowed"
         >
-          <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          Sign in with Google
+          <Mail size={20} className="group-hover:scale-110 transition-transform" />
+          Send Magic Link
         </button>
 
         <div className="relative">
@@ -91,7 +117,7 @@ export const SignIn: React.FC<SignInProps> = ({ theme, onSuccess, onToggleView }
             <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white dark:bg-slate-900 px-2 text-slate-500 font-bold">Or continue with email</span>
+            <span className="bg-white dark:bg-slate-900 px-2 text-slate-500 font-bold">Or continue with password</span>
           </div>
         </div>
       </div>
@@ -132,7 +158,7 @@ export const SignIn: React.FC<SignInProps> = ({ theme, onSuccess, onToggleView }
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-4 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-bold rounded-2xl shadow-lg shadow-teal-600/20 hover:shadow-xl hover:shadow-teal-600/30 transition-all flex items-center justify-center gap-2 group"
+          className="w-full py-4 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 disabled:bg-slate-400 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 group disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <Loader2 className="animate-spin" size={20} />

@@ -1,21 +1,7 @@
 import { Staff, Patient, District, Designation, AppUser } from './types';
 import { INITIAL_STAFF } from './staffData';
 import { supabase } from './lib/supabase';
-import { db, auth } from './firebase';
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy,
-  Timestamp,
-  serverTimestamp
-} from 'firebase/firestore';
+import { SUPER_ADMIN_EMAIL, MAX_ADMINS } from './constants';
 
 const MOCK_PATIENTS: Patient[] = [
   {
@@ -271,84 +257,133 @@ export const dataService = {
     }
   },
   
-  // --- User Management (Firestore) ---
-  
+  // --- User Management (Supabase) ---
+
   getUsers: async (): Promise<AppUser[]> => {
+    if (!supabase) return [];
     try {
-      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
-        ...doc.data(),
-        uid: doc.id
-      })) as AppUser[];
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []).map(u => ({ ...u, uid: u.id }));
     } catch (error) {
       console.error('Error getting users:', error);
       return [];
     }
   },
-  
+
   getUserProfile: async (uid: string): Promise<AppUser | null> => {
+    if (!supabase) return null;
     try {
-      const docRef = doc(db, 'users', uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return { ...docSnap.data(), uid: docSnap.id } as AppUser;
-      }
-      return null;
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', uid)
+        .single();
+
+      if (error) return null;
+      return { ...data, uid: data.id };
     } catch (error) {
       console.error('Error getting user profile:', error);
       return null;
     }
   },
-  
+
   syncUserProfile: async (user: any): Promise<AppUser> => {
-    const docRef = doc(db, 'users', user.uid);
-    const docSnap = await getDoc(docRef);
-    
-    const userData = {
-      email: user.email,
-      displayName: user.displayName || user.email.split('@')[0],
-      photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=random`,
-      lastLogin: new Date().toISOString(),
-    };
-    
-    if (!docSnap.exists()) {
-      // New user
-      const newUser: any = {
-        ...userData,
-        role: user.email === 'nursingcareinfo21@gmail.com' ? 'admin' : 'viewer',
-        createdAt: new Date().toISOString(),
+    if (!supabase) {
+      return {
+        uid: user.id,
+        email: user.email,
+        displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        role: user.email === SUPER_ADMIN_EMAIL ? 'admin' : 'viewer',
+        photoURL: user.user_metadata?.avatar_url,
+        createdAt: user.created_at,
+        lastLogin: new Date().toISOString()
       };
-      await setDoc(docRef, newUser);
-      return { ...newUser, uid: user.uid };
+    }
+
+    // Check if user exists in users table
+    const { data: existing } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    const userData = {
+      id: user.id,
+      email: user.email,
+      display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+      photo_url: user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${user.email}&background=random`,
+      last_login: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (!existing) {
+      // New user - insert into users table
+      const newUser = {
+        ...userData,
+        role: user.email === SUPER_ADMIN_EMAIL ? 'admin' : 'viewer',
+        created_at: new Date().toISOString(),
+      };
+      await supabase.from('users').insert([newUser]);
+      return {
+        uid: newUser.id,
+        email: newUser.email,
+        displayName: newUser.display_name,
+        photoURL: newUser.photo_url,
+        role: newUser.role as 'admin' | 'staff' | 'viewer',
+        createdAt: newUser.created_at,
+        lastLogin: newUser.last_login
+      };
     } else {
-      // Existing user
-      await updateDoc(docRef, userData);
-      return { ...docSnap.data(), ...userData, uid: user.uid } as AppUser;
+      // Existing user - update last login
+      await supabase.from('users').update(userData).eq('id', user.id);
+      return {
+        uid: existing.id,
+        email: existing.email,
+        displayName: existing.display_name || userData.display_name,
+        photoURL: existing.photo_url || userData.photo_url,
+        role: existing.role as 'admin' | 'staff' | 'viewer',
+        createdAt: existing.created_at,
+        lastLogin: userData.last_login
+      };
     }
   },
-  
+
   updateUserRole: async (uid: string, role: 'admin' | 'staff' | 'viewer'): Promise<void> => {
+    if (!supabase) throw new Error('Supabase not configured');
     try {
       if (role === 'admin') {
         const users = await dataService.getUsers();
         const adminCount = users.filter(u => u.role === 'admin').length;
-        if (adminCount >= 2) {
-          throw new Error('Maximum limit of 2 administrators reached. Please revoke admin access from another user first.');
+        if (adminCount >= MAX_ADMINS) {
+          throw new Error(`Maximum limit of ${MAX_ADMINS} administrators reached. Please revoke admin access from another user first.`);
         }
       }
-      const docRef = doc(db, 'users', uid);
-      await updateDoc(docRef, { role });
+      const { error } = await supabase
+        .from('users')
+        .update({ role, updated_at: new Date().toISOString() })
+        .eq('id', uid);
+
+      if (error) throw error;
     } catch (error) {
       console.error('Error updating user role:', error);
       throw error;
     }
   },
-  
+
   deleteUser: async (uid: string): Promise<void> => {
+    if (!supabase) throw new Error('Supabase not configured');
     try {
-      const docRef = doc(db, 'users', uid);
-      await deleteDoc(docRef);
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', uid);
+
+      if (error) throw error;
     } catch (error) {
       console.error('Error deleting user:', error);
       throw error;
