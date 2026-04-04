@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  UserRound, 
+import { useQuery } from '@tanstack/react-query';
+import {
+  UserRound,
   Search, 
   Plus, 
   Filter, 
@@ -55,6 +56,9 @@ import { Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ConfirmationModal } from './ConfirmationModal';
 import { CameraCapture } from './CameraCapture';
+import { StaffMatchingModal } from './StaffMatchingModal';
+import { WhatsAppOnboardingModal } from './WhatsAppOnboardingModal';
+import { matchStaffToPatient, MatchResult } from '../services/matchingService';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -142,7 +146,7 @@ const StatusBadge = ({ status }: { status: PatientStatus }) => {
   );
 };
 
-const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate }: { patient: Patient, staff: Staff[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void> }) => {
+const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch }: { patient: Patient, staff: Staff[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void>, onMatch: (patient: Patient) => void }) => {
   const assignedStaff = staff.find(s => s.id === patient.assigned_staff_id);
   const [isQuickEditing, setIsQuickEditing] = useState(false);
   const [editBuffer, setEditBuffer] = useState({
@@ -310,22 +314,34 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate }: { patient: P
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-amber-600">
-                <AlertCircle size={14} />
-                <span className="text-xs font-bold">Unassigned</span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-amber-600">
+                  <AlertCircle size={14} />
+                  <span className="text-xs font-bold">Unassigned</span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMatch(patient);
+                  }}
+                  className="w-full py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <UserCheck size={14} />
+                  Find Best Match
+                </button>
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); window.open(`tel:${patient.contact}`); }}
               className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-sky-50 hover:text-sky-600 transition-all"
             >
               <Phone size={14} />
               Call
             </button>
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${patient.contact.replace(/\s+/g, '')}`); }}
               className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all"
             >
@@ -744,6 +760,13 @@ export const PatientModule = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // Staff matching modal state
+  const [isMatchingOpen, setIsMatchingOpen] = useState(false);
+  const [matchingPatient, setMatchingPatient] = useState<Patient | null>(null);
+  
+  // WhatsApp onboarding modal state
+  const [isWhatsAppOnboardingOpen, setIsWhatsAppOnboardingOpen] = useState(false);
 
   React.useEffect(() => {
     setAnalysisResult(null);
@@ -771,10 +794,30 @@ export const PatientModule = () => {
     }
   };
 
+  // Use React Query for cached, deduplicated patient data
+  const { data: queryPatients = [], isLoading: isPatientLoading } = useQuery({
+    queryKey: ['patients'],
+    queryFn: dataService.getPatients,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Sync query data to local state for filtering
   React.useEffect(() => {
-    dataService.getPatients().then(setPatients);
-    dataService.getStaff().then(setStaff);
-  }, []);
+    if (queryPatients.length > 0) setPatients(queryPatients);
+  }, [queryPatients]);
+
+  // Fetch staff for caregiver display
+  const { data: queryStaff = [] } = useQuery({
+    queryKey: ['staff'],
+    queryFn: dataService.getStaff,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  React.useEffect(() => {
+    if (queryStaff.length > 0) setStaff(queryStaff);
+  }, [queryStaff]);
+
+  const isLoading = isPatientLoading;
 
   const filteredPatients = useMemo(() => {
     return patients.filter(p => {
@@ -860,7 +903,14 @@ export const PatientModule = () => {
             <Download size={18} />
             Export
           </button>
-          <button 
+          <button
+            onClick={() => setIsWhatsAppOnboardingOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20 hover:scale-105 transition-all"
+          >
+            <MessageSquare size={18} />
+            WhatsApp
+          </button>
+          <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 px-6 py-2.5 bg-sky-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-sky-100 hover:scale-105 transition-all"
           >
@@ -916,16 +966,20 @@ export const PatientModule = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           >
             {filteredPatients.map(p => (
-              <PatientCard 
-                key={p.id} 
-                patient={p} 
-                staff={staff} 
-                onClick={() => setSelectedPatient(p)} 
+              <PatientCard
+                key={p.id}
+                patient={p}
+                staff={staff}
+                onClick={() => setSelectedPatient(p)}
                 onEdit={() => {
                   setSelectedPatient(p);
                   setIsEditModalOpen(true);
                 }}
                 onUpdate={handleUpdatePatient}
+                onMatch={(patient) => {
+                  setMatchingPatient(patient);
+                  setIsMatchingOpen(true);
+                }}
               />
             ))}
           </motion.div>
@@ -1327,6 +1381,34 @@ export const PatientModule = () => {
         message={`Are you sure you want to delete ${patientToDelete?.full_name}? This action cannot be undone and all associated data will be permanently removed.`}
         confirmText="Delete Record"
         type="danger"
+      />
+
+      {/* Staff Matching Modal */}
+      {matchingPatient && (
+        <StaffMatchingModal
+          isOpen={isMatchingOpen}
+          onClose={() => {
+            setIsMatchingOpen(false);
+            setMatchingPatient(null);
+          }}
+          patient={matchingPatient}
+          allStaff={staff}
+          onAssign={(staffId) => {
+            if (matchingPatient) {
+              handleUpdatePatient({ assigned_staff_id: staffId });
+            }
+          }}
+        />
+      )}
+
+      {/* WhatsApp Onboarding Modal */}
+      <WhatsAppOnboardingModal
+        isOpen={isWhatsAppOnboardingOpen}
+        onClose={() => setIsWhatsAppOnboardingOpen(false)}
+        onPatientCreated={(patient) => {
+          setPatients([patient, ...patients]);
+          setIsWhatsAppOnboardingOpen(false);
+        }}
       />
     </div>
   );

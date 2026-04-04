@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Users, 
+import { useQuery } from '@tanstack/react-query';
+import {
+  Users,
   Search, 
   Plus, 
   Filter, 
@@ -849,9 +850,19 @@ export const StaffModule = () => {
     }
   };
 
+  // Use React Query for cached, deduplicated staff data
+  const { data: queryStaff = [], isLoading: isQueryLoading } = useQuery({
+    queryKey: ['staff'],
+    queryFn: dataService.getStaff,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Sync query data to local state for filtering
   React.useEffect(() => {
-    dataService.getStaff().then(setStaff);
-  }, []);
+    if (queryStaff.length > 0) setStaff(queryStaff);
+  }, [queryStaff]);
+
+  const isLoading = isQueryLoading;
 
   const filteredStaff = useMemo(() => {
     return staff.filter(s => {

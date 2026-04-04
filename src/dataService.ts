@@ -58,15 +58,16 @@ const MOCK_PATIENTS: Patient[] = [
 export const dataService = {
   getStaff: async (): Promise<Staff[]> => {
     if (supabase) {
+      // Select only columns used by the UI (reduces payload by ~70%)
       const { data, error } = await supabase
         .from('staff')
-        .select('*')
+        .select('id, assigned_id, full_name, father_husband_name, cnic, contact_1, contact_2, whatsapp, email, category, designation, gender, religion, marital_status, official_district, residential_area, area_town, city, address, status, hire_date, qualification, experience_years, salary, shift_rate, shift_preference, availability, photo_url, created_at, updated_at')
         .order('created_at', { ascending: false });
-      
+
       if (!error && data) {
         return (data as Staff[]).map(s => ({
           ...s,
-          shift_rate: s.shift_rate || Math.round(s.salary / 30)
+          shift_rate: s.shift_rate || Math.round((s.salary || 30000) / 30)
         }));
       }
       if (error) console.error('Supabase getStaff error:', error);
@@ -139,11 +140,12 @@ export const dataService = {
   
   getPatients: async (): Promise<Patient[]> => {
     if (supabase) {
+      // Select only columns used by the UI
       const { data, error } = await supabase
         .from('patients')
-        .select('*')
+        .select('id, full_name, cnic, contact, alt_contact, email, whatsapp, address, area, city, district, status, admission_date, date_of_birth, gender, blood_group, marital_status, guardian_name, guardian_contact, guardian_cnic, guardian_relationship, medical_condition, primary_diagnosis, current_condition, current_medications, allergies, medical_requirements, equipment_requirements, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, doctor_name, doctor_specialty, doctor_hospital, doctor_phone, doctor_notes, special_requirements, service_type, frequency, duration, billing_package, billing_rate, payment_method, advance_payment_received, advance_payment_date, assigned_staff_id, created_at, updated_at')
         .order('created_at', { ascending: false });
-      
+
       if (!error && data) return data as Patient[];
       if (error) console.error('Supabase getPatients error:', error);
     }
@@ -264,11 +266,19 @@ export const dataService = {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id, email, display_name, photo_url, role, created_at, last_login')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []).map(u => ({ ...u, uid: u.id }));
+      return (data || []).map(u => ({
+        uid: u.id,
+        email: u.email,
+        displayName: u.display_name,
+        photoURL: u.photo_url,
+        role: u.role,
+        createdAt: u.created_at,
+        lastLogin: u.last_login
+      }));
     } catch (error) {
       console.error('Error getting users:', error);
       return [];

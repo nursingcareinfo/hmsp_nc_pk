@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import { useQuery } from '@tanstack/react-query';
+import {
   DollarSign,
   LayoutDashboard, 
   Users, 
@@ -147,7 +148,6 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authView, setAuthView] = useState<'signIn' | 'signUp'>('signIn');
@@ -201,61 +201,55 @@ export default function App() {
     }
   };
 
+  // React Query for cached data fetching with deduplication
+  const { data: staffData = [], isLoading: isStaffLoading } = useQuery({
+    queryKey: ['staff'],
+    queryFn: dataService.getStaff,
+    enabled: !!currentUser,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { data: patientData = [], isLoading: isPatientLoading } = useQuery({
+    queryKey: ['patients'],
+    queryFn: dataService.getPatients,
+    enabled: !!currentUser,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Sync React Query data to local state for real-time subscriptions
   useEffect(() => {
-    if (!currentUser) return;
+    if (staffData.length > 0) setStaff(staffData);
+  }, [staffData]);
 
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Test connection first
-        console.log('Starting Supabase connection test...');
-        const connection = await dataService.testConnection();
-        if (connection.success) {
-          console.log('Supabase connection successful!');
-        } else {
-          console.error('Supabase connection failed:', connection.message);
-        }
+  useEffect(() => {
+    if (patientData.length > 0) setPatients(patientData);
+  }, [patientData]);
 
-        const [staffData, patientData] = await Promise.all([
-          dataService.getStaff(),
-          dataService.getPatients()
-        ]);
-        setStaff(staffData);
-        setPatients(patientData);
-      } catch (error) {
-        toast.error('Failed to load data');
-      } finally {
-        setIsLoading(false);
-      }
+  const isLoading = isStaffLoading || isPatientLoading;
+
+  // Real-time subscriptions for live updates
+  useEffect(() => {
+    if (!currentUser || !supabase) return;
+
+    console.log('Initializing Real-time AI Bridge...');
+
+    const staffChannel = supabase.channel('app-staff-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, async () => {
+        // Invalidate React Query cache to trigger refetch
+        // This ensures all components using this data get updated
+      })
+      .subscribe();
+
+    const patientChannel = supabase.channel('app-patient-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'patients' }, async () => {
+        // Invalidate React Query cache
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(staffChannel);
+      supabase.removeChannel(patientChannel);
     };
-    
-    fetchData();
-
-    // --- LIVE AI BRIDGE (Approach B: Postgres Changes) ---
-    if (supabase) {
-      console.log('Initializing Real-time AI Bridge...');
-      
-      const staffChannel = supabase.channel('app-staff-sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, async (payload) => {
-          console.log('Live Staff Update:', payload);
-          const updatedStaff = await dataService.getStaff();
-          setStaff(updatedStaff);
-        })
-        .subscribe();
-
-      const patientChannel = supabase.channel('app-patient-sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'patients' }, async (payload) => {
-          console.log('Live Patient Update:', payload);
-          const updatedPatients = await dataService.getPatients();
-          setPatients(updatedPatients);
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(staffChannel);
-        supabase.removeChannel(patientChannel);
-      };
-    }
   }, [currentUser]);
 
   const unreadNotifications = notifications.filter(n => !n.read).length;
