@@ -96,9 +96,9 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white w-full max-w-2xl rounded-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+        className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
       >
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-teal-600 text-white">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-teal-600 text-white">
           <div className="flex flex-col">
             <h3 className="font-bold">{title}</h3>
             {multiple && (
@@ -177,7 +177,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose
               <>
                 <button 
                   onClick={retake}
-                  className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 transition-all"
+                  className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 transition-all"
                 >
                   <RefreshCw size={20} />
                   Retake

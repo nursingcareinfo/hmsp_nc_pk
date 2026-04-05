@@ -104,13 +104,13 @@ export const NotificationsModule = () => {
                     {!n.read && (
                       <button 
                         onClick={() => markNotificationAsRead(n.id)}
-                        className="p-2 bg-white rounded-xl text-slate-400 hover:text-teal-600 shadow-sm transition-all"
+                        className="p-2 bg-white dark:bg-slate-900 rounded-xl text-slate-400 hover:text-teal-600 shadow-sm transition-all"
                         title="Mark as read"
                       >
                         <CheckCircle2 size={18} />
                       </button>
                     )}
-                    <button className="p-2 bg-white rounded-xl text-slate-400 hover:text-rose-600 shadow-sm transition-all">
+                    <button className="p-2 bg-white dark:bg-slate-900 rounded-xl text-slate-400 hover:text-rose-600 shadow-sm transition-all">
                       <Trash2 size={18} />
                     </button>
                   </div>

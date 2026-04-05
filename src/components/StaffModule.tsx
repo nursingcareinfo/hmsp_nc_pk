@@ -514,9 +514,9 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
       >
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-teal-600 text-white">
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-teal-600 text-white">
           <div>
             <h2 className="text-2xl font-black tracking-tight">{initialData ? 'Edit Staff Profile' : 'New Staff Registration'}</h2>
             <p className="text-teal-100 text-sm font-medium">Step {step} of 3: {step === 1 ? 'Personal Info' : step === 2 ? 'Professional Details' : 'Employment Terms'}</p>
@@ -542,7 +542,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   <button 
                     type="button"
                     onClick={() => { setCameraType('form'); setIsBatchMode(false); setSkipAI(false); setIsCameraOpen(true); }}
-                    className="flex-1 flex flex-col items-center justify-center p-4 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl hover:bg-slate-100 transition-all group"
+                    className="flex-1 flex flex-col items-center justify-center p-4 bg-slate-50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl hover:bg-slate-100 transition-all group"
                   >
                     <FileText size={24} className="text-slate-600 mb-2 group-hover:scale-110 transition-transform" />
                     <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Scan Form</span>
@@ -745,7 +745,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   </div>
                 </div>
 
-                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
                   <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                     <ShieldCheck size={14} />
                     Emergency Contact
@@ -753,21 +753,21 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Name</label>
-                      <input {...register('emergency_contact_name')} className="w-full bg-white border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
+                      <input {...register('emergency_contact_name')} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Relationship</label>
-                      <input {...register('emergency_contact_relationship')} className="w-full bg-white border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
+                      <input {...register('emergency_contact_relationship')} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Phone</label>
-                      <input {...register('emergency_contact_phone')} className="w-full bg-white border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
+                      <input {...register('emergency_contact_phone')} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Alt Phone</label>
-                      <input {...register('emergency_contact_alt_phone')} className="w-full bg-white border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
+                      <input {...register('emergency_contact_alt_phone')} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
                     </div>
                   </div>
                 </div>
@@ -794,7 +794,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
           </form>
         </div>
 
-        <div className="p-8 border-t border-slate-100 flex justify-between bg-slate-50">
+        <div className="p-8 border-t border-slate-100 dark:border-slate-800 flex justify-between bg-slate-50">
           <button 
             type="button"
             onClick={() => step > 1 ? setStep(step - 1) : onClose()}
@@ -1084,7 +1084,7 @@ export const StaffModule = () => {
         <select 
           value={staffFilters.category}
           onChange={(e) => setStaffFilters({ category: e.target.value as any, designation: 'All' })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm outline-none"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm outline-none"
         >
           <option value="All">All Categories</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1093,7 +1093,7 @@ export const StaffModule = () => {
         <select 
           value={staffFilters.designation}
           onChange={(e) => setStaffFilters({ designation: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm outline-none"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm outline-none"
         >
           <option value="All">All Designations</option>
           {staffFilters.category === 'All' 
@@ -1105,7 +1105,7 @@ export const StaffModule = () => {
         <select 
           value={staffFilters.district}
           onChange={(e) => setStaffFilters({ district: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
         >
           <option value="All">All Districts</option>
           {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -1114,7 +1114,7 @@ export const StaffModule = () => {
         <select 
           value={staffFilters.status}
           onChange={(e) => setStaffFilters({ status: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
         >
           <option value="All">All Status</option>
           <option value="Active">Active</option>
@@ -1128,7 +1128,7 @@ export const StaffModule = () => {
           <select 
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
+            className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
           >
             <option value="name">Sort by Name</option>
             <option value="date">Sort by Date</option>
@@ -1136,7 +1136,7 @@ export const StaffModule = () => {
           </select>
           <button 
             onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-            className="p-2 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-teal-600 transition-all shadow-sm"
+            className="p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl text-slate-400 hover:text-teal-600 transition-all shadow-sm"
           >
             <ArrowUpDown size={16} className={cn(sortOrder === 'desc' && "rotate-180 transition-transform")} />
           </button>
@@ -1184,7 +1184,7 @@ export const StaffModule = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden"
+            className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden"
           >
             <table className="w-full text-left border-collapse">
               <thead>
@@ -1271,7 +1271,7 @@ export const StaffModule = () => {
           <button 
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="p-2 rounded-xl bg-white border border-slate-100 text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-all"
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-all"
           >
             <ChevronLeft size={20} />
           </button>
@@ -1296,7 +1296,7 @@ export const StaffModule = () => {
                     "w-10 h-10 rounded-xl text-sm font-bold transition-all",
                     currentPage === pageNum 
                       ? "bg-teal-600 text-white shadow-lg shadow-teal-100" 
-                      : "bg-white border border-slate-100 text-slate-500 hover:bg-slate-50"
+                      : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-500 hover:bg-slate-50"
                   )}
                 >
                   {pageNum}
@@ -1307,7 +1307,7 @@ export const StaffModule = () => {
           <button 
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
-            className="p-2 rounded-xl bg-white border border-slate-100 text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-all"
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-all"
           >
             <ChevronRight size={20} />
           </button>
@@ -1346,9 +1346,9 @@ export const StaffModule = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative bg-white dark:bg-slate-900 w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-teal-600 to-sky-600 text-white">
+              <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-teal-600 to-sky-600 text-white">
                 <div className="flex items-center gap-6">
                   <div className="w-20 h-20 rounded-[32px] bg-white/20 backdrop-blur-md flex items-center justify-center text-white font-black text-3xl border border-white/30">
                     {selectedStaff.full_name.charAt(0)}
@@ -1391,7 +1391,7 @@ export const StaffModule = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {/* Left Column: Personal & Contact */}
                   <div className="space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <UserRound size={14} />
                         Personal Information
@@ -1424,7 +1424,7 @@ export const StaffModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <PhoneCall size={14} />
                         Contact Details
@@ -1462,7 +1462,7 @@ export const StaffModule = () => {
 
                   {/* Middle Column: Professional */}
                   <div className="space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Briefcase size={14} />
                         Professional Profile
@@ -1478,7 +1478,7 @@ export const StaffModule = () => {
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Relevant Experience</p>
-                          <p className="text-sm font-bold text-slate-900 italic">
+                          <p className="text-sm font-bold text-slate-900 dark:text-slate-100 italic">
                             {selectedStaff.relevant_experience || <span className="text-rose-500 italic font-bold">Missing Info</span>}
                           </p>
                         </div>
@@ -1491,7 +1491,7 @@ export const StaffModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <CreditCard size={14} />
                         Employment & Payment
@@ -1531,7 +1531,7 @@ export const StaffModule = () => {
 
                   {/* Right Column: Documents & Status */}
                   <div className="space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <FileText size={14} />
                         Documents
@@ -1540,7 +1540,7 @@ export const StaffModule = () => {
                         {['CNIC Copy', 'PNC License', 'Degree Certificate'].map(doc => (
                           <div key={doc} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl group cursor-pointer hover:bg-teal-50 transition-colors">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 bg-white rounded-xl text-slate-400 group-hover:text-teal-600 shadow-sm">
+                              <div className="p-2 bg-white dark:bg-slate-900 rounded-xl text-slate-400 group-hover:text-teal-600 shadow-sm">
                                 <FileText size={16} />
                               </div>
                               <span className="text-xs font-bold text-slate-600 group-hover:text-teal-900">{doc}</span>
@@ -1551,7 +1551,7 @@ export const StaffModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Sparkles size={14} className="text-teal-500" />
                         AI Document Verification
@@ -1569,7 +1569,7 @@ export const StaffModule = () => {
                         </div>
 
                         {isAnalyzing && (
-                          <div className="flex items-center gap-3 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
                             <Loader2 size={16} className="animate-spin text-teal-600" />
                             <span className="text-[10px] font-bold text-slate-500 uppercase">Gemini is verifying...</span>
                           </div>
@@ -1579,7 +1579,7 @@ export const StaffModule = () => {
                           <motion.div 
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm max-h-[300px] overflow-y-auto custom-scrollbar"
+                            className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm max-h-[300px] overflow-y-auto custom-scrollbar"
                           >
                             <div className="prose prose-sm max-w-none prose-slate">
                               <ReactMarkdown>{analysisResult}</ReactMarkdown>
@@ -1589,7 +1589,7 @@ export const StaffModule = () => {
                       </div>
                     </section>
                     {/* Advances Section */}
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                           <DollarSign size={14} />
@@ -1607,7 +1607,7 @@ export const StaffModule = () => {
                         <motion.div 
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="mb-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3"
+                          className="mb-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3"
                         >
                           <div>
                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Amount (PKR)</label>
@@ -1615,7 +1615,7 @@ export const StaffModule = () => {
                               type="number" 
                               value={advanceForm.amount}
                               onChange={(e) => setAdvanceForm(prev => ({ ...prev, amount: Number(e.target.value) }))}
-                              className="w-full bg-white border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500"
+                              className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:ring-teal-500"
                               placeholder="Enter amount"
                             />
                           </div>
@@ -1625,7 +1625,7 @@ export const StaffModule = () => {
                               type="text" 
                               value={advanceForm.reason}
                               onChange={(e) => setAdvanceForm(prev => ({ ...prev, reason: e.target.value }))}
-                              className="w-full bg-white border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500"
+                              className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:ring-teal-500"
                               placeholder="e.g. Family emergency"
                             />
                           </div>
@@ -1638,7 +1638,7 @@ export const StaffModule = () => {
                             </button>
                             <button 
                               onClick={() => setIsAddingAdvance(false)}
-                              className="flex-1 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-xl"
+                              className="flex-1 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 text-xs font-bold rounded-xl"
                             >
                               Cancel
                             </button>

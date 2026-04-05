@@ -59,7 +59,7 @@ export const DashboardModule = ({ staff, patients, setActiveTab }: { staff: Staf
     
     setIsGenerating(true);
     try {
-      const prompt = `Based on the following LIVE data from Supabase, provide a brief (3-4 bullet points) strategic summary for NursingCare.pk:
+      const prompt = `Based on the following LIVE data from Supabase, provide a brief (3-4 bullet points) strategic summary for H.M.S.P:
         - Total Staff: ${staff.length}
         - Active Staff: ${staff.filter(s => s.status === 'Active').length}
         - Active Patients: ${patients.filter(p => p.status === 'Active').length}
@@ -115,7 +115,7 @@ export const DashboardModule = ({ staff, patients, setActiveTab }: { staff: Staf
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-black text-teal-900 dark:text-teal-400 uppercase tracking-widest">NursingCare Live AI</h3>
+                  <h3 className="text-sm font-black text-teal-900 dark:text-teal-400 uppercase tracking-widest">H.M.S.P Live AI</h3>
                   <div className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full text-[10px] font-bold uppercase animate-pulse">Live Feed</div>
                 </div>
                 {isGenerating ? (

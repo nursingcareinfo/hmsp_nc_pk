@@ -63,6 +63,7 @@ import { CameraCapture } from './CameraCapture';
 import { StaffMatchingModal } from './StaffMatchingModal';
 import { WhatsAppOnboardingModal } from './WhatsAppOnboardingModal';
 import { matchStaffToPatient, MatchResult } from '../services/matchingService';
+import { supabase } from '../lib/supabase';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -151,7 +152,6 @@ const StatusBadge = ({ status }: { status: PatientStatus }) => {
 };
 
 const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch }: { patient: Patient, staff: Staff[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void>, onMatch: (patient: Patient) => void }) => {
-  const assignedStaff = staff.find(s => s.id === patient.assigned_staff_id);
   const [isQuickEditing, setIsQuickEditing] = useState(false);
   const [editBuffer, setEditBuffer] = useState({
     full_name: patient.full_name,
@@ -159,6 +159,27 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch }: { p
     billing_rate: patient.billing_rate
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [dayStaff, setDayStaff] = useState<Staff | null>(null);
+  const [nightStaff, setNightStaff] = useState<Staff | null>(null);
+
+  // Fetch today's duty assignments for this patient
+  React.useEffect(() => {
+    if (!supabase) return;
+    const today = new Date().toISOString().split('T')[0];
+    supabase
+      .from('duty_assignments')
+      .select('staff_id, shift_type, status')
+      .eq('patient_id', patient.id)
+      .eq('duty_date', today)
+      .in('status', ['assigned', 'confirmed', 'completed'])
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        const day = data.find(a => a.shift_type === 'day');
+        const night = data.find(a => a.shift_type === 'night');
+        if (day) setDayStaff(staff.find(s => s.id === day.staff_id) || null);
+        if (night) setNightStaff(staff.find(s => s.id === night.staff_id) || null);
+      });
+  }, [patient.id, staff]);
 
   const hasChanges = 
     editBuffer.full_name !== patient.full_name || 
@@ -305,66 +326,50 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch }: { p
 
       {!isQuickEditing && (
         <>
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
-            <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Assigned Caregiver</p>
-            {assignedStaff ? (
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white text-xs font-bold">
-                    {assignedStaff.full_name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">{assignedStaff.full_name}</p>
-                    <p className="text-[10px] text-slate-500">{assignedStaff.designation}</p>
-                  </div>
-                </div>
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 mb-6">
+            <p className="text-[10px] font-bold text-slate-400 uppercase mb-3">Today's Shift Staff</p>
 
-                {/* Shift Schedule */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center gap-1.5 p-2 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
-                    <Sun size={12} className="text-teal-600 dark:text-teal-400" />
-                    <div>
-                      <p className="text-[9px] font-bold text-teal-600 dark:text-teal-400 uppercase">Day</p>
-                      <p className="text-[10px] text-slate-600 dark:text-slate-400">
-                        {['Day', 'Both', '24 hrs'].includes(assignedStaff.shift_preference as string) || !assignedStaff.shift_preference ? '✓ Available' : '—'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                    <Moon size={12} className="text-indigo-600 dark:text-indigo-400" />
-                    <div>
-                      <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Night</p>
-                      <p className="text-[10px] text-slate-600 dark:text-slate-400">
-                        {['Night', 'Both', '24 hrs'].includes(assignedStaff.shift_preference as string) ? '✓ Available' : '—'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Service type badge */}
-                {patient.service_type && (
-                  <span className="inline-block mt-3 px-2 py-0.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-md text-[9px] font-black uppercase tracking-tighter border border-sky-100 dark:border-sky-800">
-                    {patient.service_type}
-                  </span>
+            {/* Day Shift Staff */}
+            <div className="flex items-center gap-3 p-3 bg-teal-50 dark:bg-teal-900/20 rounded-xl border border-teal-100 dark:border-teal-800 mb-2">
+              <div className="w-9 h-9 rounded-lg bg-teal-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                {dayStaff ? dayStaff.full_name.charAt(0) : <Sun size={16} />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">☀️ Day Shift</p>
+                {dayStaff ? (
+                  <>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{dayStaff.full_name}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">{dayStaff.designation}</p>
+                  </>
+                ) : (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">Not assigned</p>
                 )}
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-amber-600">
-                  <AlertCircle size={14} />
-                  <span className="text-xs font-bold">Unassigned</span>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMatch(patient);
-                  }}
-                  className="w-full py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 transition-all flex items-center justify-center gap-2"
-                >
-                  <UserCheck size={14} />
-                  Find Best Match
-                </button>
+            </div>
+
+            {/* Night Shift Staff */}
+            <div className="flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-3">
+              <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                {nightStaff ? nightStaff.full_name.charAt(0) : <Moon size={16} />}
               </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">🌙 Night Shift</p>
+                {nightStaff ? (
+                  <>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{nightStaff.full_name}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">{nightStaff.designation}</p>
+                  </>
+                ) : (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">Not assigned</p>
+                )}
+              </div>
+            </div>
+
+            {/* Service type badge */}
+            {patient.service_type && (
+              <span className="inline-block px-2 py-0.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-md text-[9px] font-black uppercase tracking-tighter border border-sky-100 dark:border-sky-800">
+                {patient.service_type}
+              </span>
             )}
           </div>
 
@@ -493,9 +498,9 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative bg-white w-full max-w-3xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative bg-white dark:bg-slate-900 w-full max-w-3xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
       >
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-sky-600 text-white">
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-sky-600 text-white">
           <div>
             <h2 className="text-2xl font-black tracking-tight">Patient Registration</h2>
             <p className="text-sky-100 text-sm font-medium">Register a new patient for home care services.</p>
@@ -551,7 +556,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">CNIC Images ({watch('cnic_image_urls').length})</label>
                     <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                       {watch('cnic_image_urls').map((url: string, idx: number) => (
-                        <div key={idx} className="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden shrink-0 group">
+                        <div key={idx} className="relative w-20 h-20 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0 group">
                           <img src={url} className="w-full h-full object-cover" />
                           <button 
                             type="button"
@@ -573,7 +578,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Form Images ({watch('form_image_urls').length})</label>
                     <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                       {watch('form_image_urls').map((url: string, idx: number) => (
-                        <div key={idx} className="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden shrink-0 group">
+                        <div key={idx} className="relative w-20 h-20 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0 group">
                           <img src={url} className="w-full h-full object-cover" />
                           <button 
                             type="button"
@@ -732,7 +737,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                     className="w-5 h-5 rounded-lg border-slate-300 text-sky-600 focus:ring-sky-500"
                   />
                   <div>
-                    <label className="text-sm font-bold text-slate-900 block">Advance Payment Received</label>
+                    <label className="text-sm font-bold text-slate-900 dark:text-slate-100 block">Advance Payment Received</label>
                     <p className="text-[10px] text-slate-500 font-medium italic">Required for one month package</p>
                   </div>
                 </div>
@@ -751,7 +756,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
           </form>
         </div>
 
-        <div className="p-8 border-t border-slate-100 flex justify-between bg-slate-50">
+        <div className="p-8 border-t border-slate-100 dark:border-slate-800 flex justify-between bg-slate-50">
           <button 
             type="button"
             onClick={onClose}
@@ -965,7 +970,7 @@ export const PatientModule = () => {
         <select 
           value={patientFilters.district}
           onChange={(e) => setPatientFilters({ district: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-sky-500 shadow-sm"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-sky-500 shadow-sm"
         >
           <option value="All">All Districts</option>
           {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -974,7 +979,7 @@ export const PatientModule = () => {
         <select 
           value={patientFilters.status}
           onChange={(e) => setPatientFilters({ status: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-sky-500 shadow-sm"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-sky-500 shadow-sm"
         >
           <option value="All">All Status</option>
           <option value="Active">Active</option>
@@ -1024,7 +1029,7 @@ export const PatientModule = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden"
+            className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden"
           >
             <table className="w-full text-left border-collapse">
               <thead>
@@ -1123,9 +1128,9 @@ export const PatientModule = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative bg-white dark:bg-slate-900 w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-sky-600 to-indigo-600 text-white">
+              <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-sky-600 to-indigo-600 text-white">
                 <div className="flex items-center gap-6">
                   <div className="w-20 h-20 rounded-[32px] bg-white/20 backdrop-blur-md flex items-center justify-center text-white font-black text-3xl border border-white/30">
                     {selectedPatient.full_name.charAt(0)}
@@ -1167,7 +1172,7 @@ export const PatientModule = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                   {/* Left Column: Patient Info */}
                   <div className="lg:col-span-1 space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <UserRound size={14} />
                         Patient Profile
@@ -1210,7 +1215,7 @@ export const PatientModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <ShieldCheck size={14} />
                         Guardian
@@ -1230,9 +1235,9 @@ export const PatientModule = () => {
 
                   {/* Middle Columns: Medical & Care Plan */}
                   <div className="lg:col-span-2 space-y-8">
-                    <section className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-3">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-3">
                           <div className="p-2 bg-sky-50 text-sky-600 rounded-xl">
                             <Heart size={20} />
                           </div>
@@ -1270,7 +1275,7 @@ export const PatientModule = () => {
                               </div>
                             </div>
                           ) : (
-                            <button className="w-full py-2 bg-white text-sky-600 rounded-xl text-xs font-bold border border-sky-200 hover:bg-sky-100 transition-all">
+                            <button className="w-full py-2 bg-white dark:bg-slate-900 text-sky-600 rounded-xl text-xs font-bold border border-sky-200 hover:bg-sky-100 transition-all">
                               Assign Now
                             </button>
                           )}
@@ -1293,7 +1298,7 @@ export const PatientModule = () => {
                           <div className="flex flex-wrap gap-2">
                             {selectedPatient.special_requirements ? (
                               selectedPatient.special_requirements.split(',').map(req => (
-                                <span key={req} className="px-3 py-1 bg-white border border-slate-100 rounded-full text-[10px] font-bold text-slate-600 shadow-sm">
+                                <span key={req} className="px-3 py-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full text-[10px] font-bold text-slate-600 shadow-sm">
                                   {req.trim()}
                                 </span>
                               ))
@@ -1305,8 +1310,8 @@ export const PatientModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm">
-                      <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-3">
+                    <section className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
                         <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
                           <History size={20} />
                         </div>
@@ -1333,7 +1338,7 @@ export const PatientModule = () => {
 
                   {/* Right Column: Billing & Documents */}
                   <div className="lg:col-span-1 space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <CreditCard size={14} />
                         Billing & Package
@@ -1360,7 +1365,7 @@ export const PatientModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Sparkles size={14} className="text-sky-500" />
                         AI Medical Assistant
@@ -1378,7 +1383,7 @@ export const PatientModule = () => {
                         </div>
 
                         {isAnalyzing && (
-                          <div className="flex items-center gap-3 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
                             <Loader2 size={16} className="animate-spin text-sky-600" />
                             <span className="text-[10px] font-bold text-slate-500 uppercase">Gemini is analyzing...</span>
                           </div>
@@ -1388,7 +1393,7 @@ export const PatientModule = () => {
                           <motion.div 
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm max-h-[300px] overflow-y-auto custom-scrollbar"
+                            className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm max-h-[300px] overflow-y-auto custom-scrollbar"
                           >
                             <div className="prose prose-sm max-w-none prose-slate">
                               <ReactMarkdown>{analysisResult}</ReactMarkdown>

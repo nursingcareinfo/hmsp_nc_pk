@@ -125,19 +125,19 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
           <p className="text-3xl font-black text-amber-900">{formatPKR(450000)}</p>
           <p className="text-xs text-amber-600 font-bold mt-1">32 Staff Members</p>
         </div>
-        <div className="bg-slate-100 border border-slate-200 p-6 rounded-3xl">
+        <div className="bg-slate-100 border border-slate-200 dark:border-slate-700 p-6 rounded-3xl">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-slate-600 rounded-xl text-white">
               <DollarSign size={20} />
             </div>
-            <span className="text-slate-900 font-bold">Total Budget</span>
+            <span className="text-slate-900 dark:text-slate-100 font-bold">Total Budget</span>
           </div>
           <p className="text-3xl font-black text-slate-900">{formatPKR(2800000)}</p>
           <p className="text-xs text-slate-500 font-bold mt-1">Next Cycle: April 15</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
         <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -247,7 +247,7 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
                             Disburse
                           </button>
                         )}
-                        <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all">
+                        <button className="p-2 text-slate-400 hover:text-slate-900 dark:text-slate-100 hover:bg-slate-100 rounded-xl transition-all">
                           <Download size={18} />
                         </button>
                       </div>

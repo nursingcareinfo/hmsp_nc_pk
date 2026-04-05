@@ -136,7 +136,7 @@ export const SettingsModule = ({ currentUser }: { currentUser: AppUser | null })
         <AnimatePresence mode="popLayout">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-white border border-slate-100 p-6 rounded-3xl animate-pulse">
+              <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-3xl animate-pulse">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 bg-slate-100 rounded-2xl" />
                   <div className="flex-1 space-y-2">
@@ -155,7 +155,7 @@ export const SettingsModule = ({ currentUser }: { currentUser: AppUser | null })
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm hover:shadow-xl transition-all group relative overflow-hidden"
+                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-3xl shadow-sm hover:shadow-xl transition-all group relative overflow-hidden"
               >
                 {/* Role Badge */}
                 <div className="absolute top-4 right-4">
@@ -171,7 +171,7 @@ export const SettingsModule = ({ currentUser }: { currentUser: AppUser | null })
                 </div>
 
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 p-0.5 border border-slate-100 overflow-hidden shadow-inner">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 p-0.5 border border-slate-100 dark:border-slate-800 overflow-hidden shadow-inner">
                     <img 
                       src={user.photoURL} 
                       alt={user.displayName} 
@@ -180,7 +180,7 @@ export const SettingsModule = ({ currentUser }: { currentUser: AppUser | null })
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-slate-900 truncate">{user.displayName}</h4>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100 truncate">{user.displayName}</h4>
                     <p className="text-xs text-slate-500 font-medium truncate">{user.email}</p>
                   </div>
                 </div>
@@ -255,11 +255,11 @@ export const SettingsModule = ({ currentUser }: { currentUser: AppUser | null })
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden"
+              className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden"
             >
               <div className="p-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight">Add New Admin</h3>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Add New Admin</h3>
                   <button onClick={() => setIsAddingUser(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
                     <X size={20} className="text-slate-400" />
                   </button>
