@@ -2,14 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   UserRound,
-  Search, 
-  Plus, 
-  Filter, 
-  Download, 
-  LayoutGrid, 
-  List, 
-  Phone, 
-  MessageSquare, 
+  Search,
+  Plus,
+  Filter,
+  Download,
+  LayoutGrid,
+  List,
+  Phone,
+  MessageSquare,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
@@ -37,7 +37,11 @@ import {
   ClipboardList,
   UserCheck,
   Camera,
-  Sparkles
+  Sparkles,
+  Sun,
+  Moon,
+  BedDouble,
+  Repeat
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
@@ -304,14 +308,41 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch }: { p
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
             <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Assigned Caregiver</p>
             {assignedStaff ? (
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white text-xs font-bold">
-                  {assignedStaff.full_name.charAt(0)}
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white text-xs font-bold">
+                    {assignedStaff.full_name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">{assignedStaff.full_name}</p>
+                    <p className="text-[10px] text-slate-500">{assignedStaff.designation}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-900">{assignedStaff.full_name}</p>
-                  <p className="text-[10px] text-slate-500">{assignedStaff.designation}</p>
+
+                {/* Shift Schedule */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-1.5 p-2 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
+                    <Sun size={12} className="text-teal-600 dark:text-teal-400" />
+                    <div>
+                      <p className="text-[9px] font-bold text-teal-600 dark:text-teal-400 uppercase">Day</p>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-400">{assignedStaff.shift_preference === 'Day' || !assignedStaff.shift_preference ? '✓ Available' : '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                    <Moon size={12} className="text-indigo-600 dark:text-indigo-400" />
+                    <div>
+                      <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Night</p>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-400">{assignedStaff.shift_preference === 'Night' || assignedStaff.shift_preference === '24 hrs' ? '✓ Available' : '—'}</p>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Service type badge */}
+                {patient.service_type && (
+                  <span className="inline-block mt-3 px-2 py-0.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-md text-[9px] font-black uppercase tracking-tighter border border-sky-100 dark:border-sky-800">
+                    {patient.service_type}
+                  </span>
+                )}
               </div>
             ) : (
               <div className="space-y-3">

@@ -2,19 +2,19 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Users,
-  Search, 
-  Plus, 
-  Filter, 
-  Download, 
-  LayoutGrid, 
-  List, 
-  Phone, 
-  MessageSquare, 
+  UserRound,
+  Search,
+  Plus,
+  Filter,
+  Download,
+  LayoutGrid,
+  List,
+  Phone,
+  MessageSquare,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
   UserPlus,
-  UserRound,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -34,12 +34,14 @@ import {
   ArrowUpDown,
   Camera,
   Sparkles,
-  DollarSign
+  DollarSign,
+  Bed,
+  Home
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
 import { dataService } from '../dataService';
-import { Staff, District, Designation, StaffStatus, StaffCategory } from '../types';
+import { Staff, Patient, District, Designation, StaffStatus, StaffCategory } from '../types';
 import { format } from 'date-fns';
 import { formatPKR, formatPKDate, formatCNIC, formatPKPhone } from '../lib/utils';
 import { clsx, type ClassValue } from 'clsx';
@@ -191,7 +193,7 @@ const StatusBadge = ({ status }: { status: StaffStatus }) => {
   );
 };
 
-const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void> }) => {
+const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate }: { staff: Staff, patients: Patient[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void> }) => {
   const [isQuickEditing, setIsQuickEditing] = useState(false);
   const [editBuffer, setEditBuffer] = useState({
     full_name: staff.full_name,
@@ -338,7 +340,36 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
       </AnimatePresence>
 
       {!isQuickEditing && (
-        <div className="grid grid-cols-2 gap-3">
+        <>
+          {/* Assigned Patient Info */}
+          {(() => {
+            const assignedPatient = patients?.find(p => p.assigned_staff_id === staff.id);
+            if (assignedPatient) {
+              return (
+                <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-100 dark:border-rose-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Bed size={12} className="text-rose-500" />
+                    <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider">Assigned Patient</span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">{assignedPatient.full_name}</p>
+                  <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    <Home size={10} />
+                    {assignedPatient.address}
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                    <MapPin size={10} />
+                    {assignedPatient.district}
+                  </div>
+                  <span className="inline-block mt-2 px-2 py-0.5 bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-md text-[9px] font-black uppercase tracking-tighter">
+                    {assignedPatient.service_type}
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+          <div className="grid grid-cols-2 gap-3">
           <button 
             onClick={(e) => { e.stopPropagation(); window.open(`tel:${staff.contact_1}`); }}
             className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-teal-50 hover:text-teal-600 transition-all"
@@ -353,7 +384,8 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
             <MessageSquare size={14} />
             WhatsApp
           </button>
-        </div>
+          </div>
+        </>
       )}
     </motion.div>
   );
@@ -857,6 +889,13 @@ export const StaffModule = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Fetch patients to show assigned patient info on staff cards
+  const { data: queryPatients = [] } = useQuery({
+    queryKey: ['patients'],
+    queryFn: dataService.getPatients,
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Sync query data to local state for filtering
   React.useEffect(() => {
     if (queryStaff.length > 0) setStaff(queryStaff);
@@ -1089,10 +1128,11 @@ export const StaffModule = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           >
             {paginatedStaff.map(s => (
-              <StaffCard 
-                key={s.id} 
-                staff={s} 
-                onClick={() => setSelectedStaff(s)} 
+              <StaffCard
+                key={s.id}
+                staff={s}
+                patients={queryPatients}
+                onClick={() => setSelectedStaff(s)}
                 onEdit={() => {
                   setSelectedStaff(s);
                   setIsEditModalOpen(true);
