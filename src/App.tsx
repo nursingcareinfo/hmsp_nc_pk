@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   DollarSign,
@@ -33,16 +33,19 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from './store';
 import { dataService } from './dataService';
 import { Staff, Patient, Notification } from './types';
-import { StaffModule } from './components/StaffModule';
-import { PatientModule } from './components/PatientModule';
-import { SchedulingModule } from './components/SchedulingModule';
-import { PayrollModule } from './components/PayrollModule';
-import { AdvancesModule } from './components/AdvancesModule';
-import { NotificationsModule } from './components/NotificationsModule';
+
+// Code-split heavy modules — loaded on-demand when tab is opened
+// Modules use named exports, so we map them to default for React.lazy()
+const StaffModule = lazy(() => import('./components/StaffModule').then(m => ({ default: m.StaffModule })));
+const PatientModule = lazy(() => import('./components/PatientModule').then(m => ({ default: m.PatientModule })));
+const SchedulingModule = lazy(() => import('./components/SchedulingModule').then(m => ({ default: m.SchedulingModule })));
+const PayrollModule = lazy(() => import('./components/PayrollModule').then(m => ({ default: m.PayrollModule })));
+const AdvancesModule = lazy(() => import('./components/AdvancesModule').then(m => ({ default: m.AdvancesModule })));
+const NotificationsModule = lazy(() => import('./components/NotificationsModule').then(m => ({ default: m.NotificationsModule })));
+const MarketAnalysisModule = lazy(() => import('./components/MarketAnalysisModule').then(m => ({ default: m.MarketAnalysisModule })));
 import { AIChatAssistant } from './components/AIChatAssistant';
 import { Logo } from './components/Logo';
 import { SupabaseStatus } from './components/SupabaseStatus';
-import { MarketAnalysisModule } from './components/MarketAnalysisModule';
 import { 
   BarChart, 
   Bar, 
@@ -473,14 +476,23 @@ export default function App() {
                 transition={{ duration: 0.3 }}
               >
                 {activeTab === 'dashboard' && <DashboardModule staff={staff} patients={patients} setActiveTab={setActiveTab} />}
-                {activeTab === 'staff' && <StaffModule />}
-                {activeTab === 'patients' && <PatientModule />}
-                {activeTab === 'scheduling' && <SchedulingModule staff={staff} patients={patients} />}
-                {activeTab === 'payroll' && <PayrollModule staff={staff} />}
-                {activeTab === 'advances' && <AdvancesModule staff={staff} />}
-                {activeTab === 'notifications' && <NotificationsModule />}
-                {activeTab === 'market' && <MarketAnalysisModule />}
-                {activeTab === 'settings' && <SettingsModule currentUser={currentUser} />}
+                <Suspense fallback={
+                  <div className="flex items-center justify-center py-32">
+                    <div className="flex flex-col items-center gap-4">
+                      <Loader2 size={32} className="animate-spin text-teal-600" />
+                      <p className="text-sm text-slate-400 font-medium">Loading {activeTab}...</p>
+                    </div>
+                  </div>
+                }>
+                  {activeTab === 'staff' && <StaffModule />}
+                  {activeTab === 'patients' && <PatientModule />}
+                  {activeTab === 'scheduling' && <SchedulingModule staff={staff} patients={patients} />}
+                  {activeTab === 'payroll' && <PayrollModule staff={staff} />}
+                  {activeTab === 'advances' && <AdvancesModule staff={staff} />}
+                  {activeTab === 'notifications' && <NotificationsModule />}
+                  {activeTab === 'market' && <MarketAnalysisModule />}
+                  {activeTab === 'settings' && <SettingsModule currentUser={currentUser} />}
+                </Suspense>
               </motion.div>
             )}
           </AnimatePresence>
