@@ -238,7 +238,7 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
   };
 
   return (
-    <motion.div 
+    <motion.div
       layout
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -249,6 +249,19 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
         isQuickEditing ? "border-teal-500 ring-2 ring-teal-500/10" : "border-slate-100 dark:border-slate-800 hover:shadow-xl cursor-pointer group"
       )}
     >
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (isQuickEditing) handleSave(); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && isQuickEditing) {
+            e.preventDefault();
+            setIsQuickEditing(false);
+          }
+        }}
+        className="block"
+        onClick={(e) => {
+          if (isQuickEditing) e.stopPropagation();
+        }}
+      >
       <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
         <button 
           onClick={(e) => { e.stopPropagation(); setIsQuickEditing(!isQuickEditing); }}
@@ -282,7 +295,6 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
               value={editBuffer.full_name}
               onChange={(e) => setEditBuffer(prev => ({ ...prev, full_name: e.target.value }))}
               onClick={(e) => e.stopPropagation()}
-              onKeyDown={handleKeyDown}
               className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-teal-500 dark:text-white"
             />
           ) : (
@@ -315,7 +327,6 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
                   type="number"
                   value={editBuffer.shift_rate}
                   onChange={(e) => setEditBuffer(prev => ({ ...prev, shift_rate: Number(e.target.value) }))}
-                  onKeyDown={handleKeyDown}
                   className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-[10px] font-bold focus:ring-2 focus:ring-teal-500 dark:text-white"
                 />
               </div>
@@ -414,6 +425,7 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
           </button>
         </>
       )}
+      </form>
     </motion.div>
   );
 };
@@ -1197,7 +1209,16 @@ export const StaffModule = () => {
                   setSelectedStaff(s);
                   setIsEditModalOpen(true);
                 }}
-                onUpdate={handleUpdateStaff}
+                onUpdate={async (id, data) => {
+                  try {
+                    await dataService.updateStaff(id, data);
+                    await queryClient.invalidateQueries({ queryKey: ['staff'] });
+                    toast.success('Staff updated successfully');
+                  } catch (error) {
+                    console.error('Error updating staff:', error);
+                    toast.error('Failed to update staff');
+                  }
+                }}
                 onAttendance={(staffMember) => {
                   setAttendanceStaff(staffMember);
                   setShowAttendanceCalendar(true);
