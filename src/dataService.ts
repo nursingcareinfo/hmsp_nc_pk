@@ -60,6 +60,7 @@ export const dataService = {
     if (supabase) {
       // Supabase Cloud limits responses to 1000 rows per request.
       // We fetch in batches of 1000 until we get fewer than 1000 back.
+      const seenIds = new Set<string>();
       let allStaff: any[] = [];
       let from = 0;
       const batchSize = 1000;
@@ -77,7 +78,11 @@ export const dataService = {
         }
         if (!data || data.length === 0) break;
 
-        allStaff = allStaff.concat(data);
+        // Deduplicate by ID to prevent any overlap between batches
+        const newRecords = data.filter(r => !seenIds.has(r.id));
+        newRecords.forEach(r => seenIds.add(r.id));
+        allStaff = allStaff.concat(newRecords);
+
         if (data.length < batchSize) break; // Got all records
         from += batchSize;
       }
