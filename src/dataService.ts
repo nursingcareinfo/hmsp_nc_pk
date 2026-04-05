@@ -112,23 +112,37 @@ export const dataService = {
   
   addStaff: async (staff: Omit<Staff, 'id' | 'assigned_id'>): Promise<Staff> => {
     if (supabase) {
-      // Get count for assigned_id
-      const { count } = await supabase.from('staff').select('*', { count: 'exact', head: true });
-      const nextId = ((count || 0) + 1).toString().padStart(3, '0');
-      const assigned_id = `NC-KHI-${nextId}`;
-      
+      // Don't generate assigned_id here — the database trigger auto-generates it
+      // via the trg_generate_assigned_id trigger using a PostgreSQL sequence
       const { data, error } = await supabase
         .from('staff')
-        .insert([{ ...staff, assigned_id }])
+        .insert([staff])
         .select()
         .single();
-      
+
       if (!error && data) return data as Staff;
-      if (error) console.error('Error adding staff to Supabase:', error);
+      if (error) {
+        console.error('Error adding staff to Supabase:', error);
+        // If UNIQUE constraint violated, retry once (sequence gap edge case)
+        if (error.code === '23505') {
+          const { data: retryData, error: retryError } = await supabase
+            .from('staff')
+            .insert([staff])
+            .select()
+            .single();
+          if (!retryError && retryData) return retryData as Staff;
+        }
+      }
     }
-    
+
+    // Fallback: localStorage (for offline/dev)
     const currentStaff = await dataService.getStaff();
-    const nextId = (currentStaff.length + 1).toString().padStart(3, '0');
+    // Generate next ID locally (less reliable than DB sequence)
+    const maxId = currentStaff.reduce((max, s) => {
+      const match = s.assigned_id?.match(/NC-KHI-(\d+)/);
+      return match ? Math.max(max, parseInt(match[1])) : max;
+    }, 0);
+    const nextId = (maxId + 1).toString().padStart(3, '0');
     const newStaff: Staff = {
       ...staff,
       id: Math.random().toString(36).substring(7),
