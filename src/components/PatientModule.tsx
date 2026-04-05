@@ -325,14 +325,18 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch }: { p
                     <Sun size={12} className="text-teal-600 dark:text-teal-400" />
                     <div>
                       <p className="text-[9px] font-bold text-teal-600 dark:text-teal-400 uppercase">Day</p>
-                      <p className="text-[10px] text-slate-600 dark:text-slate-400">{assignedStaff.shift_preference === 'Day' || !assignedStaff.shift_preference ? '✓ Available' : '—'}</p>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                        {['Day', 'Both', '24 hrs'].includes(assignedStaff.shift_preference as string) || !assignedStaff.shift_preference ? '✓ Available' : '—'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
                     <Moon size={12} className="text-indigo-600 dark:text-indigo-400" />
                     <div>
                       <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Night</p>
-                      <p className="text-[10px] text-slate-600 dark:text-slate-400">{assignedStaff.shift_preference === 'Night' || assignedStaff.shift_preference === '24 hrs' ? '✓ Available' : '—'}</p>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                        {['Night', 'Both', '24 hrs'].includes(assignedStaff.shift_preference as string) ? '✓ Available' : '—'}
+                      </p>
                     </div>
                   </div>
                 </div>
