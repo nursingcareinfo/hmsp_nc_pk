@@ -143,7 +143,7 @@ const staffSchema = z.object({
   father_husband_name: z.string().optional(),
   date_of_birth: z.string().optional(),
   cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, 'Invalid CNIC format (XXXXX-XXXXXXX-X)'),
-  contact_1: z.string().regex(/^\+92 3\d{2} \d{7}$/, 'Invalid phone format (+92 3XX XXXXXXX)'),
+  contact_1: z.string().regex(/^(\+92\s?3\d{2}\s?\d{7}|03\d{2}-?\d{7}|923\d{9})$/, 'Invalid phone format (+92 3XX XXXXXXX or 03XX-XXXXXXX)'),
   alt_number: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   whatsapp: z.string().optional(),

@@ -86,7 +86,7 @@ const DISTRICTS: District[] = [
 const patientSchema = z.object({
   full_name: z.string().min(3, 'Full name is required'),
   cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, 'Invalid CNIC format (XXXXX-XXXXXXX-X)'),
-  contact: z.string().regex(/^\+92 3\d{2} \d{7}$/, 'Invalid phone format (+92 3XX XXXXXXX)'),
+  contact: z.string().regex(/^(\+92\s?3\d{2}\s?\d{7}|03\d{2}-?\d{7}|923\d{9})$/, 'Invalid phone format (+92 3XX XXXXXXX or 03XX-XXXXXXX)'),
   alt_contact: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   whatsapp: z.string().optional(),
@@ -101,7 +101,7 @@ const patientSchema = z.object({
   blood_group: z.string().optional(),
   marital_status: z.string().optional(),
   guardian_name: z.string().min(3, 'Guardian name is required'),
-  guardian_contact: z.string().regex(/^\+92 3\d{2} \d{7}$/, 'Invalid phone format (+92 3XX XXXXXXX)'),
+  guardian_contact: z.string().regex(/^(\+92\s?3\d{2}\s?\d{7}|03\d{2}-?\d{7}|923\d{9})$/, 'Invalid phone format (+92 3XX XXXXXXX or 03XX-XXXXXXX)'),
   guardian_cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, 'Invalid CNIC format (XXXXX-XXXXXXX-X)'),
   guardian_relationship: z.string(),
   medical_condition: z.string().min(5, 'Medical condition is required'),
