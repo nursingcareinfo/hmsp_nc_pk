@@ -46,7 +46,7 @@ import { useUIStore } from '../store';
 import { dataService } from '../dataService';
 import { Staff, Patient, District, Designation, StaffStatus, StaffCategory } from '../types';
 import { format } from 'date-fns';
-import { formatPKR, formatPKDate, formatCNIC, formatPKPhone } from '../lib/utils';
+import { formatPKR, formatPKDate, formatCNIC, formatPKPhone, autoFormatCNIC, autoFormatPhone } from '../lib/utils';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useForm } from 'react-hook-form';
@@ -212,8 +212,9 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
     editBuffer.status !== staff.status || 
     editBuffer.shift_rate !== staff.shift_rate;
 
-  const handleSave = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleSave = async (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) e.stopPropagation();
+    if (!hasChanges) return;
     setIsSaving(true);
     try {
       await onUpdate(staff.id, editBuffer);
@@ -223,6 +224,16 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
       toast.error('Failed to update staff');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && hasChanges) {
+      e.preventDefault();
+      handleSave();
+    }
+    if (e.key === 'Escape') {
+      setIsQuickEditing(false);
     }
   };
 
@@ -266,11 +277,12 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
         </div>
         <div className="flex-1">
           {isQuickEditing ? (
-            <input 
+            <input
               autoFocus
               value={editBuffer.full_name}
               onChange={(e) => setEditBuffer(prev => ({ ...prev, full_name: e.target.value }))}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={handleKeyDown}
               className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-teal-500 dark:text-white"
             />
           ) : (
@@ -299,10 +311,11 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
               </select>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Rs.</span>
-                <input 
+                <input
                   type="number"
                   value={editBuffer.shift_rate}
                   onChange={(e) => setEditBuffer(prev => ({ ...prev, shift_rate: Number(e.target.value) }))}
+                  onKeyDown={handleKeyDown}
                   className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-[10px] font-bold focus:ring-2 focus:ring-teal-500 dark:text-white"
                 />
               </div>
@@ -586,7 +599,12 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">CNIC Number *</label>
-                    <input {...register('cnic')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.cnic && "ring-2 ring-rose-500 bg-rose-50")} placeholder="XXXXX-XXXXXXX-X" />
+                    <input
+                      {...register('cnic')}
+                      onChange={(e) => setValue('cnic', autoFormatCNIC(e.target.value))}
+                      className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.cnic && "ring-2 ring-rose-500 bg-rose-50")}
+                      placeholder="XXXXX-XXXXXXX-X"
+                    />
                     {errors.cnic && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.cnic.message as string}</p>}
                   </div>
                   <div className="space-y-2">
@@ -602,12 +620,21 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mobile Number *</label>
-                    <input {...register('contact_1')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.contact_1 && "ring-2 ring-rose-500 bg-rose-50")} placeholder="+92 3XX XXXXXXX" />
+                    <input
+                      {...register('contact_1')}
+                      onChange={(e) => setValue('contact_1', autoFormatPhone(e.target.value))}
+                      className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.contact_1 && "ring-2 ring-rose-500 bg-rose-50")}
+                      placeholder="03XX-XXXXXXX"
+                    />
                     {errors.contact_1 && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.contact_1.message as string}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">WhatsApp</label>
-                    <input {...register('whatsapp')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" />
+                    <input
+                      {...register('whatsapp')}
+                      onChange={(e) => setValue('whatsapp', autoFormatPhone(e.target.value))}
+                      className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500"
+                    />
                   </div>
                 </div>
 
