@@ -36,7 +36,10 @@ import {
   Sparkles,
   DollarSign,
   Bed,
-  Home
+  Home,
+  CalendarDays,
+  TrendingUp,
+  Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
@@ -55,6 +58,8 @@ import { Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ConfirmationModal } from './ConfirmationModal';
 import { CameraCapture } from './CameraCapture';
+import { AttendanceCalendarModal } from './AttendanceCalendarModal';
+import { advancesService } from '../services/advancesService';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -193,7 +198,7 @@ const StatusBadge = ({ status }: { status: StaffStatus }) => {
   );
 };
 
-const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate }: { staff: Staff, patients: Patient[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void> }) => {
+const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }: { staff: Staff, patients: Patient[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void>, onAttendance: (staff: Staff) => void }) => {
   const [isQuickEditing, setIsQuickEditing] = useState(false);
   const [editBuffer, setEditBuffer] = useState({
     full_name: staff.full_name,
@@ -370,14 +375,14 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate }: { staff: Staf
           })()}
 
           <div className="grid grid-cols-2 gap-3">
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); window.open(`tel:${staff.contact_1}`); }}
             className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-teal-50 hover:text-teal-600 transition-all"
           >
             <Phone size={14} />
             Call
           </button>
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${staff.contact_1.replace(/\s+/g, '')}`); }}
             className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all"
           >
@@ -385,6 +390,15 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate }: { staff: Staf
             WhatsApp
           </button>
           </div>
+
+          {/* Attendance Button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onAttendance(staff); }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 rounded-xl text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-all border border-teal-100 dark:border-teal-800"
+          >
+            <CalendarDays size={14} />
+            Attendance & Shifts
+          </button>
         </>
       )}
     </motion.div>
@@ -855,6 +869,10 @@ export const StaffModule = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
+  
+  // Attendance calendar state
+  const [showAttendanceCalendar, setShowAttendanceCalendar] = useState(false);
+  const [attendanceStaff, setAttendanceStaff] = useState<Staff | null>(null);
 
   React.useEffect(() => {
     setAnalysisResult(null);
@@ -968,8 +986,25 @@ export const StaffModule = () => {
     if (!selectedStaff || advanceForm.amount <= 0) return;
 
     try {
+      // Record advance in the advances database table
+      const advanceRecord = await advancesService.create({
+        staff_id: selectedStaff.id,
+        staff_name: selectedStaff.full_name,
+        staff_assigned_id: selectedStaff.assigned_id,
+        staff_designation: selectedStaff.designation,
+        staff_district: selectedStaff.official_district,
+        staff_salary: selectedStaff.salary,
+        amount: advanceForm.amount,
+        advance_date: advanceForm.date,
+        reason: advanceForm.reason,
+        payment_method: 'Cash',
+        status: 'Approved',
+        deducted_from_salary: 0,
+      });
+
+      // Also update staff.advances array for backward compatibility
       const newAdvance = {
-        id: Math.random().toString(36).substring(7),
+        id: advanceRecord.id,
         staff_id: selectedStaff.id,
         amount: advanceForm.amount,
         date: advanceForm.date,
@@ -979,12 +1014,12 @@ export const StaffModule = () => {
 
       const updatedAdvances = [...(selectedStaff.advances || []), newAdvance];
       const updated = await dataService.updateStaff(selectedStaff.id, { advances: updatedAdvances });
-      
+
       setStaff(prev => prev.map(s => s.id === updated.id ? updated : s));
       setSelectedStaff(updated);
       setIsAddingAdvance(false);
       setAdvanceForm({ amount: 0, reason: '', date: format(new Date(), 'yyyy-MM-dd') });
-      toast.success('Advance payment recorded successfully');
+      toast.success(`Advance Rs ${advanceForm.amount.toLocaleString()} recorded for ${selectedStaff.full_name}`);
     } catch (error) {
       toast.error('Failed to record advance payment');
     }
@@ -1138,6 +1173,10 @@ export const StaffModule = () => {
                   setIsEditModalOpen(true);
                 }}
                 onUpdate={handleUpdateStaff}
+                onAttendance={(staffMember) => {
+                  setAttendanceStaff(staffMember);
+                  setShowAttendanceCalendar(true);
+                }}
               />
             ))}
           </motion.div>
@@ -1642,7 +1681,7 @@ export const StaffModule = () => {
         )}
       </AnimatePresence>
 
-      <ConfirmationModal 
+      <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => {
           setIsDeleteModalOpen(false);
@@ -1654,6 +1693,18 @@ export const StaffModule = () => {
         confirmText="Delete Record"
         type="danger"
       />
+
+      {/* Attendance Calendar Modal */}
+      {attendanceStaff && (
+        <AttendanceCalendarModal
+          isOpen={showAttendanceCalendar}
+          onClose={() => {
+            setShowAttendanceCalendar(false);
+            setAttendanceStaff(null);
+          }}
+          staff={attendanceStaff}
+        />
+      )}
     </div>
   );
 };
