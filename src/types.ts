@@ -226,6 +226,14 @@ export interface Patient {
   advance_payment_date?: string;
   cnic_image_urls?: string[];
   form_image_urls?: string[];
+  // Shift preferences
+  needs_day_shift: boolean;
+  needs_night_shift: boolean;
+  day_shift_start?: string;
+  day_shift_end?: string;
+  night_shift_start?: string;
+  night_shift_end?: string;
+  shift_instructions?: string;
 }
 
 export interface Notification {
@@ -263,4 +271,28 @@ export interface Payroll {
   net_salary: number;
   status: 'Pending' | 'Paid' | 'Cancelled';
   payment_date?: string;
+  day_shifts_completed: number;
+  night_shifts_completed: number;
+  night_premium_total: number;
+}
+
+export interface DutyAssignment {
+  id: string;
+  patient_id: string;
+  staff_id: string;
+  shift_type: 'day' | 'night';
+  duty_date: string;
+  shift_start?: string;
+  shift_end?: string;
+  status: 'assigned' | 'confirmed' | 'completed' | 'absent' | 'no_show' | 'cancelled';
+  clock_in_time?: string;
+  clock_out_time?: string;
+  clock_in_location?: string;
+  clock_out_location?: string;
+  notes?: string;
+  admin_notes?: string;
+  is_payroll_processed: boolean;
+  assigned_by?: string;
+  assigned_at: string;
+  updated_at: string;
 }

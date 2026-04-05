@@ -467,7 +467,7 @@ export default function App() {
                 {activeTab === 'dashboard' && <DashboardModule staff={staff} patients={patients} setActiveTab={setActiveTab} />}
                 {activeTab === 'staff' && <StaffModule />}
                 {activeTab === 'patients' && <PatientModule />}
-                {activeTab === 'scheduling' && <SchedulingModule />}
+                {activeTab === 'scheduling' && <SchedulingModule staff={staff} patients={patients} />}
                 {activeTab === 'payroll' && <PayrollModule staff={staff} />}
                 {activeTab === 'advances' && <AdvancesModule staff={staff} />}
                 {activeTab === 'notifications' && <NotificationsModule />}

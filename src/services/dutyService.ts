@@ -1,0 +1,248 @@
+/**
+ * Duty Assignments Service
+ * Manual shift assignment: staff → patient → day/night shift → date
+ * Payroll: (completed_shifts × shift_rate) + allowances - advances
+ */
+
+import { supabase } from '../lib/supabase';
+import { DutyAssignment, Staff, Patient } from '../types';
+
+export const dutyService = {
+  // Fetch all duty assignments (paginated)
+  getAll: async (filters?: {
+    dateFrom?: string;
+    dateTo?: string;
+    staffId?: string;
+    patientId?: string;
+    shiftType?: 'day' | 'night';
+    status?: string;
+  }): Promise<DutyAssignment[]> => {
+    if (!supabase) return [];
+
+    let query = supabase.from('duty_assignments').select('*').order('duty_date', { ascending: false });
+
+    if (filters?.dateFrom) query = query.gte('duty_date', filters.dateFrom);
+    if (filters?.dateTo) query = query.lte('duty_date', filters.dateTo);
+    if (filters?.staffId) query = query.eq('staff_id', filters.staffId);
+    if (filters?.patientId) query = query.eq('patient_id', filters.patientId);
+    if (filters?.shiftType) query = query.eq('shift_type', filters.shiftType);
+    if (filters?.status) query = query.eq('status', filters.status);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Error fetching duty assignments:', error);
+      return [];
+    }
+    return (data || []) as DutyAssignment[];
+  },
+
+  // Get today's duty roster
+  getTodayRoster: async (date: string = new Date().toISOString().split('T')[0]): Promise<{
+    dayShifts: DutyAssignment[];
+    nightShifts: DutyAssignment[];
+  }> => {
+    const all = await dutyService.getAll({ dateFrom: date, dateTo: date });
+    return {
+      dayShifts: all.filter(a => a.shift_type === 'day'),
+      nightShifts: all.filter(a => a.shift_type === 'night'),
+    };
+  },
+
+  // Get duty assignments for a specific staff member
+  getStaffDuties: async (staffId: string, dateFrom?: string, dateTo?: string): Promise<DutyAssignment[]> => {
+    return dutyService.getAll({ staffId, dateFrom, dateTo });
+  },
+
+  // Get duty assignments for a specific patient
+  getPatientDuties: async (patientId: string, dateFrom?: string, dateTo?: string): Promise<DutyAssignment[]> => {
+    return dutyService.getAll({ patientId, dateFrom, dateTo });
+  },
+
+  // Create a new duty assignment
+  create: async (assignment: Omit<DutyAssignment, 'id' | 'assigned_at' | 'updated_at'>): Promise<DutyAssignment> => {
+    if (!supabase) throw new Error('Supabase not configured');
+
+    const { data, error } = await supabase
+      .from('duty_assignments')
+      .insert({
+        patient_id: assignment.patient_id,
+        staff_id: assignment.staff_id,
+        shift_type: assignment.shift_type,
+        duty_date: assignment.duty_date,
+        shift_start: assignment.shift_start,
+        shift_end: assignment.shift_end,
+        status: assignment.status || 'assigned',
+        notes: assignment.notes,
+        admin_notes: assignment.admin_notes,
+        assigned_by: assignment.assigned_by,
+        is_payroll_processed: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      // Handle duplicate constraint (same staff, date, shift type)
+      if (error.code === '23505') {
+        throw new Error(`${assignment.shift_type === 'day' ? 'Day' : 'Night'} shift already assigned to this staff on this date`);
+      }
+      throw error;
+    }
+    return data as DutyAssignment;
+  },
+
+  // Batch create multiple assignments
+  createBatch: async (assignments: Omit<DutyAssignment, 'id' | 'assigned_at' | 'updated_at'>[]): Promise<DutyAssignment[]> => {
+    if (!supabase) throw new Error('Supabase not configured');
+
+    const { data, error } = await supabase
+      .from('duty_assignments')
+      .insert(assignments.map(a => ({
+        patient_id: a.patient_id,
+        staff_id: a.staff_id,
+        shift_type: a.shift_type,
+        duty_date: a.duty_date,
+        shift_start: a.shift_start,
+        shift_end: a.shift_end,
+        status: a.status || 'assigned',
+        notes: a.notes,
+        assigned_by: a.assigned_by,
+        is_payroll_processed: false,
+      })))
+      .select();
+
+    if (error) throw error;
+    return (data || []) as DutyAssignment[];
+  },
+
+  // Update a duty assignment
+  update: async (id: string, updates: Partial<DutyAssignment>): Promise<DutyAssignment> => {
+    if (!supabase) throw new Error('Supabase not configured');
+
+    const { data, error } = await supabase
+      .from('duty_assignments')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as DutyAssignment;
+  },
+
+  // Clock in a staff member
+  clockIn: async (id: string, location?: string): Promise<DutyAssignment> => {
+    return dutyService.update(id, {
+      status: 'confirmed',
+      clock_in_time: new Date().toISOString(),
+      clock_in_location: location,
+    });
+  },
+
+  // Clock out a staff member and mark completed
+  clockOut: async (id: string, location?: string): Promise<DutyAssignment> => {
+    return dutyService.update(id, {
+      status: 'completed',
+      clock_out_time: new Date().toISOString(),
+      clock_out_location: location,
+    });
+  },
+
+  // Mark staff as absent
+  markAbsent: async (id: string): Promise<DutyAssignment> => {
+    return dutyService.update(id, { status: 'absent' });
+  },
+
+  // Cancel an assignment
+  cancel: async (id: string): Promise<DutyAssignment> => {
+    return dutyService.update(id, { status: 'cancelled' });
+  },
+
+  // Delete an assignment
+  delete: async (id: string): Promise<void> => {
+    if (!supabase) throw new Error('Supabase not configured');
+
+    const { error } = await supabase.from('duty_assignments').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  // Calculate payroll for a staff member based on completed shifts
+  calculateStaffPayroll: async (
+    staff: Staff,
+    periodStart: string,
+    periodEnd: string
+  ): Promise<{
+    staff_id: string;
+    staff_name: string;
+    designation: string;
+    day_shifts: number;
+    night_shifts: number;
+    total_shifts: number;
+    day_earnings: number;
+    night_earnings: number;
+    night_premium: number;
+    total_earnings: number;
+    base_salary: number;
+    shift_rate: number;
+  }> => {
+    if (!supabase) throw new Error('Supabase not configured');
+
+    const { data: completedShifts, error } = await supabase
+      .from('duty_assignments')
+      .select('shift_type')
+      .eq('staff_id', staff.id)
+      .eq('status', 'completed')
+      .gte('duty_date', periodStart)
+      .lte('duty_date', periodEnd);
+
+    if (error) throw error;
+
+    const dayShifts = completedShifts?.filter(s => s.shift_type === 'day').length || 0;
+    const nightShifts = completedShifts?.filter(s => s.shift_type === 'night').length || 0;
+    const totalShifts = dayShifts + nightShifts;
+
+    const shiftRate = staff.shift_rate || Math.round(staff.salary / 30);
+    const nightPremiumRate = shiftRate * 1.2; // 20% night premium
+
+    const dayEarnings = dayShifts * shiftRate;
+    const nightEarnings = nightShifts * nightPremiumRate;
+    const nightPremiumTotal = nightShifts * (nightPremiumRate - shiftRate);
+    const totalEarnings = dayEarnings + nightEarnings;
+
+    return {
+      staff_id: staff.id,
+      staff_name: staff.full_name,
+      designation: staff.designation,
+      day_shifts: dayShifts,
+      night_shifts: nightShifts,
+      total_shifts: totalShifts,
+      day_earnings: dayEarnings,
+      night_earnings: nightEarnings,
+      night_premium: nightPremiumTotal,
+      total_earnings: totalEarnings,
+      base_salary: staff.salary,
+      shift_rate: shiftRate,
+    };
+  },
+
+  // Get summary statistics for a date range
+  getSummary: async (dateFrom: string, dateTo: string): Promise<{
+    totalAssignments: number;
+    completed: number;
+    absent: number;
+    noShow: number;
+    pending: number;
+    dayShifts: number;
+    nightShifts: number;
+  }> => {
+    const all = await dutyService.getAll({ dateFrom, dateTo });
+    return {
+      totalAssignments: all.length,
+      completed: all.filter(a => a.status === 'completed').length,
+      absent: all.filter(a => a.status === 'absent').length,
+      noShow: all.filter(a => a.status === 'no_show').length,
+      pending: all.filter(a => a.status === 'assigned' || a.status === 'confirmed').length,
+      dayShifts: all.filter(a => a.shift_type === 'day').length,
+      nightShifts: all.filter(a => a.shift_type === 'night').length,
+    };
+  },
+};

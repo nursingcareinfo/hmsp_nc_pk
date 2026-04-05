@@ -7,11 +7,11 @@ const MOCK_PATIENTS: Patient[] = [
   {
     id: '1',
     full_name: 'Zubair Ali',
-    gender: 'Male',
+    gender: 'Male' as any,
     cnic: '42201-1234567-1',
     contact: '03123456789',
     address: 'DHA Phase 6, Karachi',
-    district: 'Karachi South',
+    district: 'Karachi South' as District,
     status: 'Active',
     admission_date: '2024-03-15',
     guardian_name: 'Ali Raza',
@@ -28,15 +28,17 @@ const MOCK_PATIENTS: Patient[] = [
     payment_method: 'Bank Transfer',
     advance_payment_received: true,
     advance_payment_date: '2024-03-14',
+    needs_day_shift: true,
+    needs_night_shift: true,
   },
   {
     id: '2',
     full_name: 'Mrs. Fatima Khan',
-    gender: 'Female',
+    gender: 'Female' as any,
     cnic: '42101-9876543-2',
     contact: '03331234567',
     address: 'Gulshan-e-Iqbal Block 4, Karachi',
-    district: 'Karachi East',
+    district: 'Karachi East' as District,
     status: 'Active',
     admission_date: '2024-02-28',
     guardian_name: 'Ahmed Khan',
@@ -52,6 +54,8 @@ const MOCK_PATIENTS: Patient[] = [
     billing_rate: 45000,
     payment_method: 'Cash',
     advance_payment_received: false,
+    needs_day_shift: true,
+    needs_night_shift: false,
   }
 ];
 
