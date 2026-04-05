@@ -146,7 +146,7 @@ const StatCard = ({ title, value, change, icon: Icon, color }: any) => (
 
 export default function App() {
   const { activeTab, setActiveTab, searchQuery, setSearchQuery, notifications, theme, toggleTheme } = useUIStore();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
@@ -262,15 +262,19 @@ export default function App() {
     )}>
       <Toaster position="top-right" richColors theme={theme} />
       
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 transition-all duration-500 ease-in-out lg:relative",
-        theme === 'dark' ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100",
-        isSidebarOpen ? "w-72" : "w-0 lg:w-20 overflow-hidden"
-      )}>
-        <div className="h-full flex flex-col p-6">
+      {/* Sidebar — hidden until hover */}
+      <aside
+        className="group fixed inset-y-0 left-0 z-50 w-2 bg-transparent hover:w-80 transition-all duration-300 ease-in-out"
+        onMouseEnter={() => setIsSidebarOpen(true)}
+        onMouseLeave={() => setIsSidebarOpen(false)}
+      >
+        <div className={cn(
+          "h-full flex flex-col p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100",
+          theme === 'dark' ? "bg-slate-900 border-r border-slate-800" : "bg-white border-r border-slate-100",
+          "rounded-r-3xl shadow-2xl"
+        )}>
           <div className="mb-12">
-            <Logo theme={theme} showText={isSidebarOpen} />
+            <Logo theme={theme} showText={true} />
           </div>
 
           <nav className="flex-1 space-y-2">
@@ -334,12 +338,12 @@ export default function App() {
                 onClick={() => setActiveTab('settings')} 
               />
             )}
-            <button 
+            <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-500 hover:bg-rose-50/10 transition-all"
             >
               <LogOut size={20} />
-              {isSidebarOpen && <span className="font-medium">Logout</span>}
+              <span className="font-medium">Logout</span>
             </button>
           </div>
         </div>
@@ -349,35 +353,47 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Header */}
         <header className={cn(
-          "backdrop-blur-md border-b px-8 py-4 flex items-center justify-between sticky top-0 z-40 transition-colors",
+          "backdrop-blur-md border-b px-8 py-4 grid grid-cols-[auto_1fr_auto] items-center gap-4 sticky top-0 z-40 transition-colors",
           theme === 'dark' ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-100"
         )}>
+          {/* Left: hamburger + user info */}
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className={cn("p-2 rounded-lg lg:hidden", theme === 'dark' ? "hover:bg-slate-800 text-slate-400" : "hover:bg-slate-50 text-slate-500")}
             >
               <Menu size={20} />
             </button>
-            <div className="relative group hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={18} />
-              <input 
-                type="text" 
-                placeholder="Search staff, patients, or records... (Ctrl+K)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={cn(
-                  "border-none rounded-2xl pl-10 pr-4 py-2.5 w-80 lg:w-96 text-sm focus:ring-2 focus:ring-teal-500 transition-all",
-                  theme === 'dark' ? "bg-slate-800 text-white placeholder:text-slate-500" : "bg-slate-50 text-slate-900"
-                )}
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
-                <kbd className={cn("px-1.5 py-0.5 border rounded text-[10px] font-bold", theme === 'dark' ? "bg-slate-700 border-slate-600 text-slate-400" : "bg-white border-slate-200 text-slate-400")}>Ctrl</kbd>
-                <kbd className={cn("px-1.5 py-0.5 border rounded text-[10px] font-bold", theme === 'dark' ? "bg-slate-700 border-slate-600 text-slate-400" : "bg-white border-slate-200 text-slate-400")}>K</kbd>
-              </div>
+            <div className="hidden sm:flex flex-col text-right">
+              <span className={cn("text-sm font-bold", theme === 'dark' ? "text-white" : "text-slate-900")}>
+                {currentUser?.displayName || 'Admin Portal'}
+              </span>
+              <span className="text-[10px] font-bold text-teal-600 uppercase">
+                {currentUser?.role === 'admin' ? (currentUser.email === SUPER_ADMIN_EMAIL ? 'Super Admin' : 'Admin') : currentUser?.role || 'Viewer'}
+              </span>
             </div>
           </div>
 
+          {/* Center: search */}
+          <div className="relative group hidden md:flex justify-center">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={18} />
+            <input
+              type="text"
+              placeholder="Search staff, patients, or records... (Ctrl+K)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={cn(
+                "border-none rounded-2xl pl-10 pr-4 py-2.5 w-full max-w-lg text-sm focus:ring-2 focus:ring-teal-500 transition-all",
+                theme === 'dark' ? "bg-slate-800 text-white placeholder:text-slate-500" : "bg-slate-50 text-slate-900"
+              )}
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
+              <kbd className={cn("px-1.5 py-0.5 border rounded text-[10px] font-bold", theme === 'dark' ? "bg-slate-700 border-slate-600 text-slate-400" : "bg-white border-slate-200 text-slate-400")}>Ctrl</kbd>
+              <kbd className={cn("px-1.5 py-0.5 border rounded text-[10px] font-bold", theme === 'dark' ? "bg-slate-700 border-slate-600 text-slate-400" : "bg-white border-slate-200 text-slate-400")}>K</kbd>
+            </div>
+          </div>
+
+          {/* Right: theme toggle + avatar */}
           <div className="flex items-center gap-4">
             <button
               onClick={toggleTheme}
@@ -388,14 +404,6 @@ export default function App() {
             >
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <div className="hidden sm:flex flex-col text-right">
-              <span className={cn("text-sm font-bold", theme === 'dark' ? "text-white" : "text-slate-900")}>
-                {currentUser?.displayName || 'Admin Portal'}
-              </span>
-              <span className="text-[10px] font-bold text-teal-600 uppercase">
-                {currentUser?.role === 'admin' ? (currentUser.email === SUPER_ADMIN_EMAIL ? 'Super Admin' : 'Admin') : currentUser?.role || 'Viewer'}
-              </span>
-            </div>
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-sky-500 p-0.5 shadow-lg shadow-teal-100">
               <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center overflow-hidden">
                 <img 

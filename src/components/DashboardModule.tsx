@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Sparkles, 
-  Loader2, 
-  Users, 
-  UserRound, 
-  TrendingUp, 
-  Activity 
+import {
+  Sparkles,
+  Loader2,
+  Users,
+  UserRound,
+  TrendingUp,
+  Activity,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownRight,
+  CheckCircle,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -20,7 +26,8 @@ import {
   Cell 
 } from 'recharts';
 import ReactMarkdown from 'react-markdown';
-import { Staff, Patient } from '../types';
+import { Staff, Patient, AdvanceRecord } from '../types';
+import { advancesService } from '../services/advancesService';
 import { geminiService } from '../services/geminiService';
 import { SupabaseStatus } from './SupabaseStatus';
 import { clsx, type ClassValue } from 'clsx';
@@ -52,7 +59,15 @@ const StatCard = ({ title, value, change, icon: Icon, color }: any) => (
 export const DashboardModule = ({ staff, patients, setActiveTab }: { staff: Staff[], patients: Patient[], setActiveTab: (tab: string) => void }) => {
   const [insights, setInsights] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [recentAdvances, setRecentAdvances] = useState<AdvanceRecord[]>([]);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch recent advances
+  useEffect(() => {
+    advancesService.getAll().then(data => {
+      setRecentAdvances(data.slice(0, 10));
+    });
+  }, []);
 
   const generateInsights = async () => {
     if (staff.length === 0 && patients.length === 0) return;
@@ -181,38 +196,52 @@ export const DashboardModule = ({ staff, patients, setActiveTab }: { staff: Staf
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Live Staff Feed</h3>
-            <button 
-              onClick={() => setActiveTab('staff')}
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Advance History</h3>
+            <button
+              onClick={() => setActiveTab('advances')}
               className="text-teal-600 dark:text-teal-400 text-sm font-bold hover:underline"
             >
               View All
             </button>
           </div>
           <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {staff.slice(0, 10).map((s) => (
-              <div key={s.id} className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
+            {recentAdvances.map((a) => (
+              <div key={a.id} className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 font-bold text-lg">
-                    {s.full_name.charAt(0)}
+                    {a.staff_name.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white">{s.full_name}</h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{s.designation} • {s.official_district}</p>
+                    <h4 className="font-bold text-slate-900 dark:text-white">{a.staff_name}</h4>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{a.staff_designation} • {a.reason || 'No reason provided'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="font-bold text-slate-900 dark:text-white">Rs. {a.amount.toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400">{new Date(a.advance_date).toLocaleDateString('en-PK')}</p>
+                  </div>
                   <div className={cn(
-                    "px-3 py-1 rounded-full text-xs font-bold",
-                    s.status === 'Active' ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                    "px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1",
+                    a.status === 'Approved' ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" :
+                    a.status === 'Pending' ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" :
+                    a.status === 'Deducted' ? "bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400" :
+                    "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400"
                   )}>
-                    {s.status}
+                    {a.status === 'Approved' && <CheckCircle size={10} />}
+                    {a.status === 'Pending' && <Clock size={10} />}
+                    {a.status === 'Deducted' && <ArrowDownRight size={10} />}
+                    {a.status === 'Cancelled' && <AlertCircle size={10} />}
+                    {a.status}
                   </div>
                 </div>
               </div>
             ))}
-            {staff.length === 0 && (
-              <div className="text-center py-8 text-slate-400 italic text-sm">No staff records found in Supabase.</div>
+            {recentAdvances.length === 0 && (
+              <div className="text-center py-8 text-slate-400 italic text-sm">
+                <Wallet size={32} className="mx-auto mb-3 opacity-50" />
+                No advance records found.
+              </div>
             )}
           </div>
         </div>
