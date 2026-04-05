@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Users,
   UserRound,
@@ -854,10 +854,10 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
 
 export const StaffModule = () => {
   const { searchQuery, staffFilters, setStaffFilters } = useUIStore();
+  const queryClient = useQueryClient();
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'salary'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [staff, setStaff] = useState<Staff[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
@@ -869,7 +869,7 @@ export const StaffModule = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
-  
+
   // Attendance calendar state
   const [showAttendanceCalendar, setShowAttendanceCalendar] = useState(false);
   const [attendanceStaff, setAttendanceStaff] = useState<Staff | null>(null);
@@ -914,11 +914,8 @@ export const StaffModule = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Sync query data to local state for filtering
-  React.useEffect(() => {
-    if (queryStaff.length > 0) setStaff(queryStaff);
-  }, [queryStaff]);
-
+  // Use query data directly — no local state copy, no sync useEffect
+  const staff = queryStaff;
   const isLoading = isQueryLoading;
 
   const filteredStaff = useMemo(() => {
@@ -955,11 +952,11 @@ export const StaffModule = () => {
 
   const handleAddStaff = async (data: any) => {
     try {
-      const newStaff = await dataService.addStaff({
+      await dataService.addStaff({
         ...data,
         status: 'Active',
       });
-      setStaff([newStaff, ...staff]);
+      await queryClient.invalidateQueries({ queryKey: ['staff'] });
       toast.success('Staff member registered successfully!');
       setIsAddModalOpen(false);
     } catch (error) {
@@ -971,9 +968,10 @@ export const StaffModule = () => {
   const handleUpdateStaff = async (data: any) => {
     if (!selectedStaff) return;
     try {
-      const updatedStaff = await dataService.updateStaff(selectedStaff.id, data);
-      setStaff(staff.map(s => s.id === selectedStaff.id ? updatedStaff : s));
-      setSelectedStaff(updatedStaff);
+      await dataService.updateStaff(selectedStaff.id, data);
+      await queryClient.invalidateQueries({ queryKey: ['staff'] });
+      // Update selectedStaff to reflect changes in open modal
+      setSelectedStaff({ ...selectedStaff, ...data });
       setIsEditModalOpen(false);
       toast.success('Staff profile updated successfully!');
     } catch (error) {
@@ -1013,10 +1011,10 @@ export const StaffModule = () => {
       };
 
       const updatedAdvances = [...(selectedStaff.advances || []), newAdvance];
-      const updated = await dataService.updateStaff(selectedStaff.id, { advances: updatedAdvances });
+      await dataService.updateStaff(selectedStaff.id, { advances: updatedAdvances });
+      await queryClient.invalidateQueries({ queryKey: ['staff'] });
 
-      setStaff(prev => prev.map(s => s.id === updated.id ? updated : s));
-      setSelectedStaff(updated);
+      setSelectedStaff({ ...selectedStaff, advances: updatedAdvances });
       setIsAddingAdvance(false);
       setAdvanceForm({ amount: 0, reason: '', date: format(new Date(), 'yyyy-MM-dd') });
       toast.success(`Advance Rs ${advanceForm.amount.toLocaleString()} recorded for ${selectedStaff.full_name}`);
@@ -1027,10 +1025,10 @@ export const StaffModule = () => {
 
   const handleDeleteStaff = async () => {
     if (!staffToDelete) return;
-    
+
     try {
       await dataService.deleteStaff(staffToDelete.id);
-      setStaff(staff.filter(s => s.id !== staffToDelete.id));
+      await queryClient.invalidateQueries({ queryKey: ['staff'] });
       toast.success('Staff record deleted successfully');
       setStaffToDelete(null);
       setSelectedStaff(null);
