@@ -154,10 +154,8 @@ export const attendanceService = {
       estimatedSalary: 0,
     };
 
-    // Calculate estimated salary:
-    // present full day = 1 shift credit
-    // half_day = 0.5 shift credit
-    // late = 0.75 shift credit (penalty)
+    // Calculate estimated salary: every completed day = 1 shift credit
+    // No premiums, no allowances — simple: shifts × rate
     const shiftCredits = summary.presentDays + (summary.halfDayDays * 0.5) + (summary.lateDays * 0.75);
     summary.estimatedSalary = Math.round(shiftCredits * summary.shiftRate);
 

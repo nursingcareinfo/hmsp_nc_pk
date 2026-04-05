@@ -201,12 +201,8 @@ export const dutyService = {
     const totalShifts = dayShifts + nightShifts;
 
     const shiftRate = staff.shift_rate || Math.round(staff.salary / 30);
-    const nightPremiumRate = shiftRate * 1.2; // 20% night premium
-
-    const dayEarnings = dayShifts * shiftRate;
-    const nightEarnings = nightShifts * nightPremiumRate;
-    const nightPremiumTotal = nightShifts * (nightPremiumRate - shiftRate);
-    const totalEarnings = dayEarnings + nightEarnings;
+    // No premium — day and night shifts paid at same rate
+    const totalEarnings = totalShifts * shiftRate;
 
     return {
       staff_id: staff.id,
@@ -215,9 +211,9 @@ export const dutyService = {
       day_shifts: dayShifts,
       night_shifts: nightShifts,
       total_shifts: totalShifts,
-      day_earnings: dayEarnings,
-      night_earnings: nightEarnings,
-      night_premium: nightPremiumTotal,
+      day_earnings: dayShifts * shiftRate,
+      night_earnings: nightShifts * shiftRate,
+      night_premium: 0,
       total_earnings: totalEarnings,
       base_salary: staff.salary,
       shift_rate: shiftRate,

@@ -273,7 +273,6 @@ export interface Payroll {
   payment_date?: string;
   day_shifts_completed: number;
   night_shifts_completed: number;
-  night_premium_total: number;
 }
 
 export interface DutyAssignment {

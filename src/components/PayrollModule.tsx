@@ -61,7 +61,6 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
           status: 'Pending',
           day_shifts_completed: Math.floor(shiftsWorked / 2),
           night_shifts_completed: Math.ceil(shiftsWorked / 2),
-          night_premium_total: Math.ceil(shiftsWorked / 2) * (shiftRate * 0.2),
         };
         addPayroll(newPayroll);
 

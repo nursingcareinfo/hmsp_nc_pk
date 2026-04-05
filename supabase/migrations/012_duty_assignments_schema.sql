@@ -103,8 +103,7 @@ CREATE TRIGGER trg_duty_updated_at
 
 ALTER TABLE public.payroll
   ADD COLUMN IF NOT EXISTS day_shifts_completed INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS night_shifts_completed INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS night_premium_total NUMERIC(10, 2) NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS night_shifts_completed INTEGER NOT NULL DEFAULT 0;
 
 -- ============================================
 -- 6. VERIFY
