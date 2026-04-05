@@ -58,21 +58,34 @@ const MOCK_PATIENTS: Patient[] = [
 export const dataService = {
   getStaff: async (): Promise<Staff[]> => {
     if (supabase) {
-      // Select only columns used by the UI (reduces payload by ~70%)
-      // .range() uses the Range header which bypasses Supabase's default 1000-row limit
-      const { data, error } = await supabase
-        .from('staff')
-        .select('id, assigned_id, full_name, father_husband_name, cnic, contact_1, contact_2, whatsapp, email, category, designation, gender, religion, marital_status, official_district, residential_area, area_town, city, address, status, hire_date, qualification, experience_years, salary, shift_rate, shift_preference, availability, photo_url, created_at, updated_at')
-        .order('created_at', { ascending: false })
-        .range(0, 10000);
+      // Supabase Cloud limits responses to 1000 rows per request.
+      // We fetch in batches of 1000 until we get fewer than 1000 back.
+      let allStaff: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
 
-      if (!error && data) {
-        return (data as Staff[]).map(s => ({
-          ...s,
-          shift_rate: s.shift_rate || Math.round((s.salary || 30000) / 30)
-        }));
+      while (true) {
+        const { data, error } = await supabase
+          .from('staff')
+          .select('id, assigned_id, full_name, father_husband_name, cnic, contact_1, contact_2, whatsapp, email, category, designation, gender, religion, marital_status, official_district, residential_area, area_town, city, address, status, hire_date, qualification, experience_years, salary, shift_rate, shift_preference, availability, photo_url, created_at, updated_at')
+          .order('created_at', { ascending: false })
+          .range(from, from + batchSize - 1);
+
+        if (error) {
+          console.error('Supabase getStaff error:', error);
+          break;
+        }
+        if (!data || data.length === 0) break;
+
+        allStaff = allStaff.concat(data);
+        if (data.length < batchSize) break; // Got all records
+        from += batchSize;
       }
-      if (error) console.error('Supabase getStaff error:', error);
+
+      return allStaff.map(s => ({
+        ...s,
+        shift_rate: s.shift_rate || Math.round((s.salary || 30000) / 30)
+      }));
     }
     
     // Fallback to local storage
@@ -142,16 +155,31 @@ export const dataService = {
   
   getPatients: async (): Promise<Patient[]> => {
     if (supabase) {
-      // Select only columns used by the UI
-      // .range() uses the Range header which bypasses Supabase's default 1000-row limit
-      const { data, error } = await supabase
-        .from('patients')
-        .select('id, full_name, cnic, contact, alt_contact, email, whatsapp, address, area, city, district, status, admission_date, date_of_birth, gender, blood_group, marital_status, guardian_name, guardian_contact, guardian_cnic, guardian_relationship, medical_condition, primary_diagnosis, current_condition, current_medications, allergies, medical_requirements, equipment_requirements, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, doctor_name, doctor_specialty, doctor_hospital, doctor_phone, doctor_notes, special_requirements, service_type, frequency, duration, billing_package, billing_rate, payment_method, advance_payment_received, advance_payment_date, assigned_staff_id, created_at, updated_at')
-        .order('created_at', { ascending: false })
-        .range(0, 10000);
+      // Supabase Cloud limits responses to 1000 rows per request.
+      // We fetch in batches of 1000 until we get fewer than 1000 back.
+      let allPatients: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
 
-      if (!error && data) return data as Patient[];
-      if (error) console.error('Supabase getPatients error:', error);
+      while (true) {
+        const { data, error } = await supabase
+          .from('patients')
+          .select('id, full_name, cnic, contact, alt_contact, email, whatsapp, address, area, city, district, status, admission_date, date_of_birth, gender, blood_group, marital_status, guardian_name, guardian_contact, guardian_cnic, guardian_relationship, medical_condition, primary_diagnosis, current_condition, current_medications, allergies, medical_requirements, equipment_requirements, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, doctor_name, doctor_specialty, doctor_hospital, doctor_phone, doctor_notes, special_requirements, service_type, frequency, duration, billing_package, billing_rate, payment_method, advance_payment_received, advance_payment_date, assigned_staff_id, created_at, updated_at')
+          .order('created_at', { ascending: false })
+          .range(from, from + batchSize - 1);
+
+        if (error) {
+          console.error('Supabase getPatients error:', error);
+          break;
+        }
+        if (!data || data.length === 0) break;
+
+        allPatients = allPatients.concat(data);
+        if (data.length < batchSize) break;
+        from += batchSize;
+      }
+
+      return allPatients as Patient[];
     }
     
     const stored = localStorage.getItem('nc_patients');
