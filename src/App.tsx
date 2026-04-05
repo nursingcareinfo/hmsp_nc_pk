@@ -37,6 +37,7 @@ import { StaffModule } from './components/StaffModule';
 import { PatientModule } from './components/PatientModule';
 import { SchedulingModule } from './components/SchedulingModule';
 import { PayrollModule } from './components/PayrollModule';
+import { AdvancesModule } from './components/AdvancesModule';
 import { NotificationsModule } from './components/NotificationsModule';
 import { AIChatAssistant } from './components/AIChatAssistant';
 import { Logo } from './components/Logo';
@@ -63,7 +64,7 @@ import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { geminiService } from './services/geminiService';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Wallet } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { SUPER_ADMIN_EMAIL } from './constants';
 
@@ -301,10 +302,16 @@ export default function App() {
               icon={DollarSign} 
               label="Payroll" 
               active={activeTab === 'payroll'} 
-              onClick={() => setActiveTab('payroll')} 
+              onClick={() => setActiveTab('payroll')}
             />
-            <SidebarItem 
-              icon={Bell} 
+            <SidebarItem
+              icon={Wallet}
+              label="Advances"
+              active={activeTab === 'advances'}
+              onClick={() => setActiveTab('advances')}
+            />
+            <SidebarItem
+              icon={Bell}
               label="Notifications" 
               active={activeTab === 'notifications'} 
               onClick={() => setActiveTab('notifications')} 
@@ -462,6 +469,7 @@ export default function App() {
                 {activeTab === 'patients' && <PatientModule />}
                 {activeTab === 'scheduling' && <SchedulingModule />}
                 {activeTab === 'payroll' && <PayrollModule staff={staff} />}
+                {activeTab === 'advances' && <AdvancesModule staff={staff} />}
                 {activeTab === 'notifications' && <NotificationsModule />}
                 {activeTab === 'market' && <MarketAnalysisModule />}
                 {activeTab === 'settings' && <SettingsModule currentUser={currentUser} />}

@@ -104,6 +104,27 @@ export interface AdvancePayment {
   status: 'Pending' | 'Approved' | 'Deducted' | 'Cancelled';
 }
 
+export interface AdvanceRecord {
+  id: string;
+  staff_id: string;
+  staff_name: string;
+  staff_assigned_id: string;
+  staff_designation: string;
+  staff_district: string;
+  staff_salary: number;
+  amount: number;
+  advance_date: string;
+  reason: string;
+  payment_method: string;
+  notes?: string;
+  status: 'Pending' | 'Approved' | 'Deducted' | 'Cancelled';
+  deducted_from_salary: number;
+  deducted_date?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Staff {
   id: string;
   assigned_id: string; // NC-KHI-XXX
