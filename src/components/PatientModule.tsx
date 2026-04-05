@@ -41,12 +41,16 @@ import {
   Sun,
   Moon,
   BedDouble,
-  Repeat
+  Repeat,
+  AlertTriangle,
+  Skull,
+  HeartOff,
+  FileX
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
 import { dataService } from '../dataService';
-import { Patient, District, PatientStatus, Staff } from '../types';
+import { Patient, District, PatientStatus, PatientEndReason, Staff } from '../types';
 import { format } from 'date-fns';
 import { formatPKR, formatPKDate, formatCNIC, formatPKPhone, autoFormatCNIC, autoFormatPhone } from '../lib/utils';
 import { clsx, type ClassValue } from 'clsx';
@@ -135,10 +139,13 @@ const patientSchema = z.object({
 // --- Components ---
 
 const StatusBadge = ({ status }: { status: PatientStatus }) => {
-  const colors = {
-    Active: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    Discharged: "bg-slate-50 text-slate-600 border-slate-100",
-    Pending: "bg-amber-50 text-amber-600 border-amber-100"
+  const colors: Record<PatientStatus, string> = {
+    Active: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800",
+    Discharged: "bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800",
+    Pending: "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800",
+    Deceased: "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800",
+    Cancelled: "bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-800",
+    Dissatisfied: "bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 border-violet-100 dark:border-violet-800"
   };
   
   return (
@@ -151,7 +158,15 @@ const StatusBadge = ({ status }: { status: PatientStatus }) => {
   );
 };
 
-const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch }: { patient: Patient, staff: Staff[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void>, onMatch: (patient: Patient) => void }) => {
+const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch, onEndServices }: {
+  patient: Patient,
+  staff: Staff[],
+  onClick: () => void,
+  onEdit: () => void,
+  onUpdate: (id: string, data: any) => Promise<void>,
+  onMatch: (patient: Patient) => void,
+  onEndServices: (patient: Patient) => void,
+}) => {
   const [isQuickEditing, setIsQuickEditing] = useState(false);
   const [editBuffer, setEditBuffer] = useState({
     full_name: patient.full_name,
@@ -274,14 +289,17 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch }: { p
         <div className="flex flex-col gap-1.5 flex-1">
           {isQuickEditing ? (
             <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-              <select 
+              <select
                 value={editBuffer.status}
                 onChange={(e) => setEditBuffer(prev => ({ ...prev, status: e.target.value as PatientStatus }))}
                 className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-[10px] font-bold uppercase focus:ring-2 focus:ring-sky-500"
               >
                 <option value="Active">Active</option>
                 <option value="Pending">Pending</option>
-                <option value="Discharged">Discharged</option>
+                <option value="Discharged">Discharged (Recovered)</option>
+                <option value="Deceased">Deceased</option>
+                <option value="Cancelled">Contract Cancelled</option>
+                <option value="Dissatisfied">Dissatisfied</option>
               </select>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-bold text-slate-400">Rs.</span>
@@ -389,22 +407,249 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch }: { p
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={(e) => { e.stopPropagation(); window.open(`tel:${patient.contact}`); }}
-              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-sky-50 hover:text-sky-600 transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 transition-all border border-slate-100 dark:border-slate-700"
             >
               <Phone size={14} />
               Call
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${patient.contact.replace(/\s+/g, '')}`); }}
-              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all border border-slate-100 dark:border-slate-700"
             >
               <MessageSquare size={14} />
               WhatsApp
             </button>
           </div>
+
+          {/* End Services button — only for Active/Pending patients */}
+          {(patient.status === 'Active' || patient.status === 'Pending') && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEndServices(patient); }}
+              className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-all border border-rose-100 dark:border-rose-800/50"
+            >
+              <AlertTriangle size={14} />
+              End Services
+            </button>
+          )}
+
+          {/* End reason badge — shown when patient has an end reason */}
+          {patient.end_reason && (
+            <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Services Ended</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                {patient.end_reason === 'recovered' && '✓ Recovered — No staff needed'}
+                {patient.end_reason === 'deceased' && '✝ Patient Deceased'}
+                {patient.end_reason === 'contract_cancelled' && '✗ Contract Cancelled by Family'}
+                {patient.end_reason === 'dissatisfied' && '! Not Satisfied with Services'}
+              </p>
+              {patient.end_date && (
+                <p className="text-[10px] text-slate-400 mt-1">Ended: {formatPKDate(patient.end_date)}</p>
+              )}
+            </div>
+          )}
         </>
       )}
     </motion.div>
+  );
+};
+
+// --- End Services Modal ---
+
+const END_OPTIONS = [
+  {
+    value: 'recovered' as const,
+    label: 'Recovered',
+    description: 'Patient has recovered — no staff needed anymore',
+    status: 'Discharged' as PatientStatus,
+    icon: Heart,
+    color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
+  },
+  {
+    value: 'deceased' as const,
+    label: 'Patient Deceased',
+    description: 'Patient has passed away',
+    status: 'Deceased' as PatientStatus,
+    icon: Skull,
+    color: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/30'
+  },
+  {
+    value: 'contract_cancelled' as const,
+    label: 'Contract Cancelled',
+    description: 'Patient\'s family cancelled the contract',
+    status: 'Cancelled' as PatientStatus,
+    icon: FileX,
+    color: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/30'
+  },
+  {
+    value: 'dissatisfied' as const,
+    label: 'Not Satisfied',
+    description: 'Family not satisfied with services or staff',
+    status: 'Dissatisfied' as PatientStatus,
+    icon: HeartOff,
+    color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 border-violet-100 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/30'
+  }
+];
+
+const EndServicesModal = ({
+  isOpen,
+  onClose,
+  patient,
+  onEnd
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  patient: Patient;
+  onEnd: (reason: PatientEndReason, notes: string) => Promise<void>;
+}) => {
+  const [selected, setSelected] = useState<PatientEndReason>(null);
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!selected) {
+      toast.error('Please select a reason');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onEnd(selected, notes);
+      setSelected(null);
+      setNotes('');
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setSelected(null);
+    setNotes('');
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={handleCancel}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center">
+                    <AlertTriangle size={20} className="text-rose-600 dark:text-rose-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">End Services</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{patient.full_name}</p>
+                  </div>
+                </div>
+                <button onClick={handleCancel} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                  <X size={18} className="text-slate-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Options */}
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Why are services ending?</p>
+              {END_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                const isSelected = selected === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setSelected(option.value)}
+                    className={cn(
+                      "w-full flex items-start gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                      isSelected
+                        ? "border-sky-500 bg-sky-50 dark:bg-sky-900/20 shadow-lg shadow-sky-100 dark:shadow-sky-900/10"
+                        : option.color
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                      isSelected
+                        ? "bg-sky-600 text-white"
+                        : "bg-white dark:bg-slate-800",
+                      option.color.split(' ')[0]
+                    )}>
+                      <Icon size={20} className={isSelected ? "text-white" : option.color.split(' ')[0]} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn(
+                        "text-sm font-bold",
+                        isSelected ? "text-sky-900 dark:text-sky-100" : "text-slate-900 dark:text-white"
+                      )}>
+                        {option.label}
+                      </p>
+                      <p className={cn(
+                        "text-xs mt-0.5",
+                        isSelected ? "text-sky-700 dark:text-sky-300" : "text-slate-500 dark:text-slate-400"
+                      )}>
+                        {option.description}
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <CheckCircle2 size={20} className="text-sky-600 dark:text-sky-400 flex-shrink-0 mt-1" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Optional notes */}
+            <div className="px-6 pb-4">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
+                Additional Notes (optional)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any details about this case..."
+                rows={3}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent dark:text-white resize-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+              <button
+                onClick={handleCancel}
+                disabled={isSubmitting}
+                className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!selected || isSubmitting}
+                className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <AlertTriangle size={16} />
+                )}
+                Confirm End Services
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -837,7 +1082,11 @@ export const PatientModule = () => {
   // Staff matching modal state
   const [isMatchingOpen, setIsMatchingOpen] = useState(false);
   const [matchingPatient, setMatchingPatient] = useState<Patient | null>(null);
-  
+
+  // End services modal state
+  const [isEndServicesOpen, setIsEndServicesOpen] = useState(false);
+  const [endServicesPatient, setEndServicesPatient] = useState<Patient | null>(null);
+
   // WhatsApp onboarding modal state
   const [isWhatsAppOnboardingOpen, setIsWhatsAppOnboardingOpen] = useState(false);
 
@@ -937,7 +1186,7 @@ export const PatientModule = () => {
 
   const handleDeletePatient = async () => {
     if (!patientToDelete) return;
-    
+
     try {
       await dataService.deletePatient(patientToDelete.id);
       setPatients(patients.filter(p => p.id !== patientToDelete.id));
@@ -946,6 +1195,38 @@ export const PatientModule = () => {
       setSelectedPatient(null);
     } catch (error) {
       toast.error('Failed to delete patient record');
+    }
+  };
+
+  const handleEndServices = async (reason: PatientEndReason, notes: string) => {
+    if (!endServicesPatient) return;
+
+    const endOption = END_OPTIONS.find(o => o.value === reason);
+    const status = endOption?.status || 'Discharged';
+
+    try {
+      const updateData: Partial<Patient> = {
+        status,
+        end_reason: reason,
+        end_date: new Date().toISOString().split('T')[0],
+        end_notes: notes || undefined,
+      };
+
+      const updatedPatient = await dataService.updatePatient(endServicesPatient.id, updateData);
+      setPatients(patients.map(p => p.id === endServicesPatient.id ? updatedPatient : p));
+
+      const reasonLabels: Record<string, string> = {
+        recovered: 'Recovered',
+        deceased: 'Deceased',
+        contract_cancelled: 'Contract Cancelled',
+        dissatisfied: 'Dissatisfied',
+      };
+
+      toast.success(`Services ended — ${reasonLabels[reason || ''] || 'Unknown'}`);
+      setEndServicesPatient(null);
+    } catch (error) {
+      console.error('Error ending services:', error);
+      toast.error('Failed to end services. Please try again.');
     }
   };
 
@@ -1009,15 +1290,18 @@ export const PatientModule = () => {
           {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
 
-        <select 
+        <select
           value={patientFilters.status}
           onChange={(e) => setPatientFilters({ status: e.target.value as any })}
           className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-sky-500 shadow-sm"
         >
           <option value="All">All Status</option>
           <option value="Active">Active</option>
-          <option value="Discharged">Discharged</option>
           <option value="Pending">Pending</option>
+          <option value="Discharged">Discharged (Recovered)</option>
+          <option value="Deceased">Deceased</option>
+          <option value="Cancelled">Contract Cancelled</option>
+          <option value="Dissatisfied">Dissatisfied</option>
         </select>
 
         <button 
@@ -1052,6 +1336,10 @@ export const PatientModule = () => {
                 onMatch={(patient) => {
                   setMatchingPatient(patient);
                   setIsMatchingOpen(true);
+                }}
+                onEndServices={(patient) => {
+                  setEndServicesPatient(patient);
+                  setIsEndServicesOpen(true);
                 }}
               />
             ))}
@@ -1471,6 +1759,19 @@ export const PatientModule = () => {
               handleUpdatePatient({ assigned_staff_id: staffId });
             }
           }}
+        />
+      )}
+
+      {/* End Services Modal */}
+      {endServicesPatient && (
+        <EndServicesModal
+          isOpen={isEndServicesOpen}
+          onClose={() => {
+            setIsEndServicesOpen(false);
+            setEndServicesPatient(null);
+          }}
+          patient={endServicesPatient}
+          onEnd={handleEndServices}
         />
       )}
 

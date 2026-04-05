@@ -39,7 +39,20 @@ export type District =
   | 'Other';
 
 export type StaffStatus = 'Active' | 'On Leave' | 'Inactive';
-export type PatientStatus = 'Active' | 'Discharged' | 'Pending';
+export type PatientStatus =
+  | 'Active'
+  | 'Pending'
+  | 'Discharged'     // Recovered — no staff needed
+  | 'Deceased'       // Patient passed away
+  | 'Cancelled'      // Contract cancelled by family
+  | 'Dissatisfied';  // Not satisfied with services/staff
+
+export type PatientEndReason =
+  | 'recovered'
+  | 'deceased'
+  | 'contract_cancelled'
+  | 'dissatisfied'
+  | null;
 
 export type StaffCategory = 
   | 'Management'
@@ -234,6 +247,10 @@ export interface Patient {
   night_shift_start?: string;
   night_shift_end?: string;
   shift_instructions?: string;
+  // Service end tracking
+  end_reason?: PatientEndReason;
+  end_date?: string;
+  end_notes?: string;
 }
 
 export interface Notification {
