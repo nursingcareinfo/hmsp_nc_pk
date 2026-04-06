@@ -3,12 +3,15 @@ import { supabase } from '../../lib/supabase';
 import { Logo } from '../Logo';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Loader2, User, Lock, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// Append this domain to username for Supabase email auth
+const AUTH_DOMAIN = '@hmsp.local';
 
 interface SignUpProps {
   theme: 'light' | 'dark';
@@ -17,7 +20,7 @@ interface SignUpProps {
 }
 
 export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +39,9 @@ export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }
       return;
     }
 
+    // Convert username to email for Supabase auth
+    const email = username.toLowerCase().trim() + AUTH_DOMAIN;
+
     try {
       const { data, error: authError } = await supabase.auth.signUp({
         email,
@@ -48,17 +54,15 @@ export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }
       if (authError) throw authError;
 
       if (data?.user) {
-        // No session means email confirmation is required — do NOT call onSuccess
         if (!data.session) {
-          const msg = 'Check your email and confirm your account before logging in.';
+          const msg = 'Account created! Sign in with your username to continue.';
           setSuccessMessage(msg);
           toast.success(msg);
         } else if (data.user.identities?.length === 0) {
-          const msg = 'An account with this email already exists. Please sign in instead.';
+          const msg = 'An account with this username already exists. Please sign in instead.';
           setError(msg);
           toast.error(msg);
         } else {
-          // Email auto-confirmed — safe to proceed
           const msg = 'Account created! Signing you in...';
           setSuccessMessage(msg);
           toast.success(msg);
@@ -69,7 +73,7 @@ export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }
       console.error('Sign up error:', err);
       let msg = 'Failed to sign up';
       if (err.message?.includes('User already registered')) {
-        msg = 'Email already in use. Please sign in instead.';
+        msg = 'Username already in use. Please sign in instead.';
       } else if (err.message?.includes('Password should be at least')) {
         msg = 'Password is too weak. Please use at least 6 characters.';
       } else {
@@ -96,18 +100,21 @@ export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-4">
+          {/* Username field */}
           <div className="relative group">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={20} />
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={20} />
             <input
-              type="email"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
+              autoComplete="username"
               className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all dark:text-white"
             />
           </div>
 
+          {/* Password field */}
           <div className="relative group">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={20} />
             <input
@@ -117,6 +124,7 @@ export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              autoComplete="new-password"
               className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all dark:text-white"
             />
           </div>

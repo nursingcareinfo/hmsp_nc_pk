@@ -1,11 +1,12 @@
 /**
- * Invoice PDF Generator — H.M.S.P Advance Payment Receipt
+ * Invoice PDF Generator — H.M.S.P Payment Invoice
  * Professional PDF with business branding, red color scheme, and logo.
  * Generated client-side using jsPDF.
  */
 
 import { jsPDF } from 'jspdf';
 import { Patient, PatientAdvance } from '../types';
+import logoImage from '../assets/nursing-care-logo.png';
 
 // =====================
 // BRAND COLORS
@@ -71,16 +72,15 @@ function drawFieldValue(doc: jsPDF, value: string, x: number, y: number, opts?: 
 }
 
 function drawSectionHeader(doc: jsPDF, title: string, x: number, y: number, contentWidth: number) {
-  doc.setFontSize(11);
-  doc.setTextColor(RED_DARK);
+  // Red background bar
+  drawRoundRect(doc, x, y - 4, contentWidth, 10, 2, RED_PRIMARY);
+  
+  doc.setFontSize(9);
+  doc.setTextColor(WHITE);
   doc.setFont('helvetica', 'bold');
-  doc.text(title, x, y);
-
-  y += 2;
-  doc.setDrawColor(RED_PRIMARY);
-  doc.setLineWidth(0.5);
-  doc.line(x, y, x + contentWidth, y);
-  return y + 7;
+  doc.text(title.toUpperCase(), x + 4, y + 3);
+  
+  return y + 12;
 }
 
 async function loadImageAsBase64(url: string): Promise<string> {
@@ -107,84 +107,84 @@ export async function generateAdvanceInvoice(data: InvoiceData): Promise<string>
   let y = 0;
 
   // ===========================
-  // 1. HEADER RED BAR
+  // 0. RED BORDER around entire page
   // ===========================
-  doc.setFillColor(RED_PRIMARY);
-  doc.rect(0, 0, W, 48, 'F');
+  doc.setDrawColor(RED_PRIMARY);
+  doc.setLineWidth(1.5);
+  doc.roundedRect(8, 8, W - 16, H - 16, 4, 4);
 
-  // Try loading logo
-  let logoLoaded = false;
+  // ===========================
+  // 1. HEADER — Large centered logo + subtitle
+  // ===========================
+  const LOGO_H = 16; // mm — logo height
+  const LOGO_W = 50; // mm — logo width (aspect ratio ~2.2:1)
+  const logoX = (W - LOGO_W) / 2; // center
+
+  // Try loading logo — centered, large
   try {
-    const logoDataUrl = await loadImageAsBase64('/assets/nursing-care-logo.png');
-    doc.addImage(logoDataUrl, 'PNG', M, 8, 32, 32);
-    logoLoaded = true;
+    const logoDataUrl = await loadImageAsBase64(logoImage);
+    doc.addImage(logoDataUrl, 'PNG', logoX, 15, LOGO_W, LOGO_H);
   } catch {
-    // Fallback: minimal logo placeholder
-    drawRoundRect(doc, M, 8, 32, 32, 4, WHITE);
-    doc.setFontSize(9);
-    doc.setTextColor(RED_PRIMARY);
+    // Fallback: text placeholder
+    drawRoundRect(doc, logoX, 15, LOGO_W, LOGO_H, 4, GRAY_100);
+    doc.setFontSize(12);
+    doc.setTextColor(GRAY_600);
     doc.setFont('helvetica', 'bold');
-    doc.text('H.M.S.P', M + 16, 24, { align: 'center' });
-    doc.setFontSize(5);
-    doc.text('KARACHI', M + 16, 30, { align: 'center' });
+    doc.text('NURSING CARE', W / 2, 25, { align: 'center' });
   }
 
-  // Brand text — right aligned
-  doc.setFontSize(26);
-  doc.setTextColor(WHITE);
-  doc.setFont('helvetica', 'bold');
-  doc.text('H.M.S.P', W - M, 18, { align: 'right' });
-
-  doc.setFontSize(10);
+  // Subtitle under logo
+  doc.setFontSize(9);
+  doc.setTextColor(GRAY_600);
   doc.setFont('helvetica', 'normal');
-  doc.text('Healthcare Management System Portal', W - M, 26, { align: 'right' });
+  doc.text('H.M.S.P — Home Medical Service Provider', W / 2, 15 + LOGO_H + 5, { align: 'center' });
 
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.text('Professional Home Nursing Care — Karachi, Pakistan', W - M, 33, { align: 'right' });
+  // Divider line
+  doc.setDrawColor(GRAY_200);
+  doc.setLineWidth(0.5);
+  doc.line(M, 15 + LOGO_H + 10, W - M, 15 + LOGO_H + 10);
 
-  // Thin accent line
-  doc.setDrawColor(RED_DARK);
-  doc.setLineWidth(0.3);
-  doc.line(M, 44, W - M, 44);
-
-  y = 56;
+  y = 15 + LOGO_H + 20;
 
   // ===========================
   // 2. DOCUMENT TITLE
   // ===========================
-  doc.setFontSize(22);
-  doc.setTextColor(RED_PRIMARY);
+  doc.setFontSize(14);
+  doc.setTextColor(GRAY_900);
   doc.setFont('helvetica', 'bold');
-  doc.text('ADVANCE PAYMENT RECEIPT', W / 2, y, { align: 'center' });
+  doc.text('Payment Invoice', W / 2, y, { align: 'center' });
 
-  y += 6;
-  doc.setDrawColor(RED_PRIMARY);
-  doc.setLineWidth(1);
-  doc.line(W / 2 - 40, y, W / 2 + 40, y);
+  y += 5;
+  doc.setDrawColor(GRAY_200);
+  doc.setLineWidth(0.3);
+  doc.line(W / 2 - 25, y, W / 2 + 25, y);
 
   y += 10;
 
   // ===========================
-  // 3. INVOICE META BAR
+  // 3. INVOICE META BAR — Subtle gray
   // ===========================
-  const metaH = 22;
-  drawRoundRect(doc, M, y, CW, metaH, 4, RED_LIGHT, RED_SUBTLE, 0.3);
+  const metaH = 18;
+  drawRoundRect(doc, M, y, CW, metaH, 4, GRAY_100, GRAY_200, 0.3);
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
+  doc.setTextColor(GRAY_600);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Invoice No:`, M + 8, y + 8);
+
   doc.setTextColor(GRAY_900);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Invoice No: ${advance.invoice_number}`, M + 8, y + 9);
+  doc.text(advance.invoice_number, M + 28, y + 8);
 
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(GRAY_500);
-  doc.text(`Date: ${formatDate(advance.advance_date)}`, M + 8, y + 17);
+  doc.setTextColor(GRAY_600);
+  doc.text(`Date: ${formatDate(advance.advance_date)}`, M + 8, y + 15);
 
-  // PAID stamp
-  doc.setFontSize(14);
-  doc.setTextColor(RED_PRIMARY);
+  // RECEIVED stamp — green instead of red
+  doc.setFontSize(11);
+  doc.setTextColor(GREEN);
   doc.setFont('helvetica', 'bold');
-  doc.text('RECEIVED', W - M - 8, y + 14, { align: 'right' });
+  doc.text('✓ RECEIVED', W - M - 8, y + 12, { align: 'right' });
 
   y += metaH + 10;
 
@@ -254,30 +254,32 @@ export async function generateAdvanceInvoice(data: InvoiceData): Promise<string>
   }
 
   // ===========================
-  // 6. AMOUNT BOX (prominent)
+  // 6. AMOUNT BOX — Clean gray with subtle red accent
   // ===========================
-  const boxH = 26;
-  drawRoundRect(doc, M, y, CW, boxH, 5, RED_PRIMARY, undefined, 0);
+  const boxH = 28;
+  drawRoundRect(doc, M, y, CW, boxH, 5, GRAY_100, GRAY_200, 0.3);
 
-  // Subtle pattern: lighter red inner rect
-  drawRoundRect(doc, M + 2, y + 2, CW - 4, boxH - 4, 3, RED_DARK);
+  // Red accent line on left
+  doc.setFillColor(RED_PRIMARY);
+  doc.roundedRect(M + 2, y + 4, 3, boxH - 8, 1.5, 1.5, 'F');
 
-  doc.setFontSize(11);
-  doc.setTextColor('#FCA5A5');
+  doc.setFontSize(10);
+  doc.setTextColor(GRAY_500);
   doc.setFont('helvetica', 'normal');
-  doc.text('TOTAL ADVANCE RECEIVED', W / 2, y + 10, { align: 'center' });
+  doc.text('TOTAL AMOUNT', W / 2, y + 11, { align: 'center' });
 
-  doc.setFontSize(22);
-  doc.setTextColor(WHITE);
+  doc.setFontSize(24);
+  doc.setTextColor(GRAY_900);
   doc.setFont('helvetica', 'bold');
-  doc.text(formatPKR(advance.amount), W / 2, y + 21, { align: 'center' });
+  doc.text(formatPKR(advance.amount), W / 2, y + 23, { align: 'center' });
 
   y += boxH + 12;
 
   // ===========================
   // 7. DIVIDER + TERMS
   // ===========================
-  y = Math.max(y, H - 50);
+  // Ensure terms don't overlap - push to bottom if content is long
+  y = Math.max(y, H - 55);
 
   doc.setDrawColor(GRAY_200);
   doc.setLineWidth(0.3);
@@ -289,9 +291,9 @@ export async function generateAdvanceInvoice(data: InvoiceData): Promise<string>
   doc.setFont('helvetica', 'italic');
 
   const terms = [
-    'This receipt acknowledges the advance payment received for home nursing care services.',
-    'The advance amount will be adjusted against future service invoices.',
-    'For queries, contact H.M.S.P Karachi Portal — Professional Home Nursing Care.',
+    'This receipt acknowledges the payment received for home nursing care services.',
+    'The amount will be adjusted against future service invoices.',
+    'For queries, contact H.M.S.P — Home Medical Service Provider.',
   ];
   terms.forEach((term) => {
     doc.text(term, W / 2, y, { align: 'center' });
@@ -299,18 +301,18 @@ export async function generateAdvanceInvoice(data: InvoiceData): Promise<string>
   });
 
   // ===========================
-  // 8. FOOTER RED BAR
+  // 8. FOOTER — Minimal gray line
   // ===========================
-  doc.setFillColor(RED_PRIMARY);
-  doc.rect(0, H - 14, W, 14, 'F');
+  doc.setDrawColor(GRAY_200);
+  doc.setLineWidth(0.3);
+  doc.line(M, H - 18, W - M, H - 18);
 
-  doc.setFontSize(8);
-  doc.setTextColor(WHITE);
-  doc.setFont('helvetica', 'bold');
-  doc.text('H.M.S.P — Healthcare Management System Portal', W / 2, H - 7, { align: 'center' });
-
+  doc.setFontSize(7);
+  doc.setTextColor(GRAY_400);
   doc.setFont('helvetica', 'normal');
-  doc.text('Karachi, Pakistan | Professional Home Nursing Care', W / 2, H - 3, { align: 'center' });
+  doc.text('H.M.S.P — Home Medical Service Provider', W / 2, H - 10, { align: 'center' });
+
+  doc.text('Karachi, Pakistan', W / 2, H - 5, { align: 'center' });
 
   // ===========================
   // 9. SAVE
