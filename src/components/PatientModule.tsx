@@ -45,7 +45,10 @@ import {
   AlertTriangle,
   Skull,
   HeartOff,
-  FileX
+  FileX,
+  DollarSign,
+  ReceiptText,
+  Receipt,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
@@ -68,6 +71,9 @@ import { StaffMatchingModal } from './StaffMatchingModal';
 import { WhatsAppOnboardingModal } from './WhatsAppOnboardingModal';
 import { matchStaffToPatient, MatchResult } from '../services/matchingService';
 import { supabase } from '../lib/supabase';
+import { patientAdvancesService } from '../services/patientAdvancesService';
+import { generateAdvanceInvoice } from '../utils/generateInvoicePdf';
+import { PatientAdvance } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -1090,6 +1096,17 @@ export const PatientModule = () => {
   // WhatsApp onboarding modal state
   const [isWhatsAppOnboardingOpen, setIsWhatsAppOnboardingOpen] = useState(false);
 
+  // Patient advance / invoice modal state
+  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
+  const [advancePatient, setAdvancePatient] = useState<Patient | null>(null);
+  const [patientAdvances, setPatientAdvances] = useState<PatientAdvance[]>([]);
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceMethod, setAdvanceMethod] = useState('Cash');
+  const [advanceReason, setAdvanceReason] = useState('');
+  const [advanceNotes, setAdvanceNotes] = useState('');
+  const [advanceDate, setAdvanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+
   React.useEffect(() => {
     setAnalysisResult(null);
   }, [selectedPatient]);
@@ -1680,8 +1697,20 @@ export const PatientModule = () => {
                             <span className="text-emerald-600">Mar 02, 2024</span>
                           </div>
                         </div>
-                        <button className="w-full py-3 bg-slate-900 text-white rounded-2xl text-xs font-bold hover:bg-slate-800 transition-all">
-                          Generate Invoice
+                        <button
+                          onClick={() => {
+                            setAdvancePatient(selectedPatient);
+                            setAdvanceAmount('');
+                            setAdvanceMethod('Cash');
+                            setAdvanceReason('');
+                            setAdvanceNotes('');
+                            setAdvanceDate(new Date().toISOString().split('T')[0]);
+                            setIsAdvanceModalOpen(true);
+                          }}
+                          className="w-full py-3 bg-red-600 text-white rounded-2xl text-xs font-bold hover:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-100 dark:shadow-red-900/20"
+                        >
+                          <ReceiptText size={16} />
+                          Record Advance & Generate Invoice
                         </button>
                       </div>
                     </section>
@@ -1784,6 +1813,207 @@ export const PatientModule = () => {
           setIsWhatsAppOnboardingOpen(false);
         }}
       />
+
+      {/* Patient Advance & Invoice Modal */}
+      <AnimatePresence>
+        {isAdvanceModalOpen && advancePatient && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={() => setIsAdvanceModalOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-white dark:bg-slate-900 px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800 z-10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-red-100 dark:bg-red-900/30 rounded-2xl text-red-600">
+                      <Receipt size={22} />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900 dark:text-white">Record Advance Payment</h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Generate invoice for client advance</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsAdvanceModalOpen(false)}
+                    className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Patient summary card */}
+                <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold text-sm">
+                      {advancePatient.full_name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 dark:text-white text-sm">{advancePatient.full_name}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                        ID: {advancePatient.id.substring(0, 8).toUpperCase()} • {advancePatient.district}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form */}
+              <div className="p-6 space-y-5">
+                {/* Amount */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Advance Amount (PKR) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">Rs.</span>
+                    <input
+                      type="number"
+                      value={advanceAmount}
+                      onChange={(e) => setAdvanceAmount(e.target.value)}
+                      placeholder="25,000"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:text-white"
+                      min="1"
+                      step="1"
+                    />
+                  </div>
+                </div>
+
+                {/* Payment Method */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Payment Method
+                  </label>
+                  <select
+                    value={advanceMethod}
+                    onChange={(e) => setAdvanceMethod(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 dark:text-white"
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="JazzCash">JazzCash</option>
+                    <option value="EasyPaisa">EasyPaisa</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Payment Date
+                  </label>
+                  <input
+                    type="date"
+                    value={advanceDate}
+                    onChange={(e) => setAdvanceDate(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 dark:text-white"
+                  />
+                </div>
+
+                {/* Reason */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Reason for Advance
+                  </label>
+                  <input
+                    type="text"
+                    value={advanceReason}
+                    onChange={(e) => setAdvanceReason(e.target.value)}
+                    placeholder="e.g., Monthly service package"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 dark:text-white"
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Notes (Optional)
+                  </label>
+                  <textarea
+                    value={advanceNotes}
+                    onChange={(e) => setAdvanceNotes(e.target.value)}
+                    placeholder="Additional notes..."
+                    rows={2}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 dark:text-white resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 pb-6 flex gap-3">
+                <button
+                  onClick={() => setIsAdvanceModalOpen(false)}
+                  className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!advanceAmount || isGeneratingInvoice}
+                  onClick={async () => {
+                    if (!advancePatient || !advanceAmount) return;
+                    setIsGeneratingInvoice(true);
+                    try {
+                      // 1. Create advance record
+                      const newAdvance = await patientAdvancesService.create({
+                        patient_id: advancePatient.id,
+                        amount: parseFloat(advanceAmount),
+                        advance_date: advanceDate,
+                        payment_method: advanceMethod as PatientAdvance['payment_method'],
+                        reason: advanceReason,
+                        notes: advanceNotes,
+                        status: 'received',
+                        invoice_number: '',
+                        invoice_generated: false,
+                        created_by: 'test-admin@hmsp.local',
+                      });
+
+                      // 2. Generate and download PDF invoice
+                      await generateAdvanceInvoice({
+                        patient: advancePatient,
+                        advance: newAdvance,
+                      });
+
+                      // 3. Mark invoice as generated
+                      await patientAdvancesService.markInvoiceGenerated(newAdvance.id);
+
+                      toast.success(`Invoice ${newAdvance.invoice_number} generated & downloaded`);
+                      setIsAdvanceModalOpen(false);
+                    } catch (error) {
+                      console.error('Advance creation error:', error);
+                      toast.error('Failed to generate invoice. Check console for details.');
+                    } finally {
+                      setIsGeneratingInvoice(false);
+                    }
+                  }}
+                  className="flex-1 py-3 bg-red-600 text-white rounded-2xl text-xs font-bold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 shadow-lg shadow-red-100 dark:shadow-red-900/20"
+                >
+                  {isGeneratingInvoice ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <ReceiptText size={14} />
+                      Save & Download Invoice
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

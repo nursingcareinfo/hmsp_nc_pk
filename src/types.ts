@@ -312,3 +312,39 @@ export interface DutyAssignment {
   assigned_at: string;
   updated_at: string;
 }
+
+export interface PatientAdvance {
+  id: string;
+  patient_id: string;
+  amount: number;
+  advance_date: string;
+  payment_method: 'Cash' | 'Bank Transfer' | 'JazzCash' | 'EasyPaisa' | 'Cheque' | 'Other';
+  reason?: string;
+  notes?: string;
+  status: 'received' | 'adjusted' | 'refunded';
+  invoice_number: string;
+  invoice_generated: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffLicense {
+  id: string;
+  staff_id: string;
+  license_type: 'PNC' | 'SLC' | 'BLS' | 'ACLS' | 'CNA' | 'RN' | 'OTHER';
+  license_number: string;
+  issuing_body: string;
+  issue_date?: string;
+  expiry_date: string;
+  status: 'active' | 'expiring_soon' | 'expired' | 'renewed' | 'revoked';
+  document_url?: string;
+  notes?: string;
+  renewal_date?: string;
+  renewal_cost?: number;
+  renewed_by?: string;
+  renewed_at?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
