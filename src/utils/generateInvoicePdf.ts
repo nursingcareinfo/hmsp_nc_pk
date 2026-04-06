@@ -193,7 +193,7 @@ export async function generateAdvanceInvoice(data: InvoiceData): Promise<string>
   // ===========================
   y = drawSectionHeader(doc, 'PATIENT INFORMATION', M, y, CW);
 
-  const patientId = patient.id.substring(0, 8).toUpperCase();
+  const patientId = patient.patient_id_assigned || patient.id.substring(0, 8).toUpperCase();
 
   // Two-column layout
   const col1X = M + 8;

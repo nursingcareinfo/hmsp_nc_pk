@@ -192,6 +192,7 @@ export interface Staff {
 
 export interface Patient {
   id: string;
+  patient_id_assigned?: string; // NC-PAT-0001, auto-generated
   full_name: string;
   cnic: string;
   contact: string;

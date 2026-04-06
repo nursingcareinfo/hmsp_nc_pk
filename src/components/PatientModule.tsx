@@ -1860,7 +1860,7 @@ export const PatientModule = () => {
                     <div>
                       <p className="font-bold text-slate-900 dark:text-white text-sm">{advancePatient.full_name}</p>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        ID: {advancePatient.id.substring(0, 8).toUpperCase()} • {advancePatient.district}
+                        ID: {advancePatient.patient_id_assigned || advancePatient.id.substring(0, 8).toUpperCase()} • {advancePatient.district}
                       </p>
                     </div>
                   </div>

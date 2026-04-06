@@ -187,7 +187,7 @@ export const dataService = {
       while (true) {
         const { data, error } = await supabase
           .from('patients')
-          .select('id, full_name, cnic, contact, alt_contact, email, whatsapp, address, area, city, district, status, admission_date, date_of_birth, gender, blood_group, marital_status, guardian_name, guardian_contact, guardian_cnic, guardian_relationship, medical_condition, primary_diagnosis, current_condition, current_medications, allergies, medical_requirements, equipment_requirements, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, doctor_name, doctor_specialty, doctor_hospital, doctor_phone, doctor_notes, special_requirements, service_type, frequency, duration, billing_package, billing_rate, payment_method, advance_payment_received, advance_payment_date, assigned_staff_id, created_at, updated_at')
+          .select('id, patient_id_assigned, full_name, cnic, contact, alt_contact, email, whatsapp, address, area, city, district, status, admission_date, date_of_birth, gender, blood_group, marital_status, guardian_name, guardian_contact, guardian_cnic, guardian_relationship, medical_condition, primary_diagnosis, current_condition, current_medications, allergies, medical_requirements, equipment_requirements, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, doctor_name, doctor_specialty, doctor_hospital, doctor_phone, doctor_notes, special_requirements, service_type, frequency, duration, billing_package, billing_rate, payment_method, advance_payment_received, advance_payment_date, assigned_staff_id, created_at, updated_at')
           .order('created_at', { ascending: false })
           .range(from, from + batchSize - 1);
 
