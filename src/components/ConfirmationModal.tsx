@@ -51,13 +51,13 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="relative bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden p-8"
+          className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden p-8"
         >
           <div className="flex flex-col items-center text-center">
             <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${iconColors[type]}`}>
               <AlertCircle size={32} />
             </div>
-            <h3 className="text-xl font-black text-slate-900 mb-2">{title}</h3>
+            <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 mb-2">{title}</h3>
             <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
               {message}
             </p>

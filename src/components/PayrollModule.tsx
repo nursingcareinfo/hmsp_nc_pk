@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { 
-  DollarSign, 
-  Calendar, 
-  Download, 
-  Filter, 
-  Search, 
-  CheckCircle2, 
-  Clock, 
+import {
+  DollarSign,
+  Calendar,
+  Download,
+  Filter,
+  Search,
+  CheckCircle2,
+  Clock,
   AlertCircle,
   ChevronRight,
   Plus
@@ -14,7 +14,8 @@ import {
 import { motion } from 'motion/react';
 import { useUIStore } from '../store';
 import { Payroll, Staff } from '../types';
-import { dataService } from '../dataService';
+import { dutyService } from '../services/dutyService';
+import { advancesService } from '../services/advancesService';
 import { format, addDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { formatPKR, formatPKDate } from '../lib/utils';
 import { toast } from 'sonner';
@@ -23,27 +24,36 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
   const { payrolls, addPayroll, updatePayrollStatus } = useUIStore();
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const generatePayroll = () => {
+  const generatePayroll = async () => {
     setIsGenerating(true);
-    // Simulate generation for a 15-day period
-    setTimeout(() => {
+
+    try {
       const today = new Date();
       const periodStart = format(today, 'yyyy-MM-01');
-      const periodEnd = format(addDays(today, 14), 'yyyy-MM-15');
+      const periodEnd = format(today, 'yyyy-MM-dd');
 
-      staff.forEach(member => {
-        const shiftsWorked = Math.floor(Math.random() * 15) + 1; // Mock 1-15 shifts
-        const shiftRate = member.shift_rate || (member.salary ? Math.round(member.salary / 30) : 1500);
-        const baseSalary = shiftsWorked * shiftRate;
-        
-        // Calculate advance deductions
-        const approvedAdvances = member.advances?.filter(a => a.status === 'Approved') || [];
+      // Fetch all advances once (instead of per-staff)
+      const allAdvances = await advancesService.getAll();
+      let paidCount = 0;
+      let pendingCount = 0;
+
+      // Generate payroll for each active staff member
+      for (const member of staff) {
+        if (member.status !== 'Active') continue;
+
+        // Fetch real completed shifts from duty_assignments
+        const payrollData = await dutyService.calculateStaffPayroll(member, periodStart, periodEnd);
+
+        // Find approved advances for this staff member
+        const approvedAdvances = allAdvances.filter(
+          a => a.staff_id === member.id && a.status === 'Approved'
+        );
         const totalAdvances = approvedAdvances.reduce((sum, a) => sum + a.amount, 0);
-        
-        const allowances = 2000;
-        const deductions = 500;
-        const netSalary = baseSalary + allowances - deductions - totalAdvances;
-        
+
+        // Flat rate: (completed_shifts × shift_rate) - advances
+        // No allowances, no deductions, no premiums
+        const netSalary = payrollData.total_earnings - totalAdvances;
+
         const newPayroll: Payroll = {
           id: Math.random().toString(36).substring(7),
           staff_id: member.id,
@@ -51,29 +61,34 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
           designation: member.designation,
           period_start: periodStart,
           period_end: periodEnd,
-          shifts_worked: shiftsWorked,
-          shift_rate: shiftRate,
-          base_salary: baseSalary,
-          allowances: allowances,
-          deductions: deductions,
+          shifts_worked: payrollData.total_shifts,
+          shift_rate: payrollData.shift_rate,
+          base_salary: payrollData.total_earnings,
+          allowances: 0,
+          deductions: 0,
           deductions_advances: totalAdvances,
           net_salary: netSalary,
-          status: 'Pending'
+          status: 'Pending',
+          day_shifts_completed: payrollData.day_shifts,
+          night_shifts_completed: payrollData.night_shifts,
         };
-        addPayroll(newPayroll);
 
-        // Mark advances as deducted if any
-        if (totalAdvances > 0) {
-          const updatedAdvances = member.advances?.map(a => 
-            a.status === 'Approved' ? { ...a, status: 'Deducted' as const } : a
-          );
-          dataService.updateStaff(member.id, { advances: updatedAdvances });
+        addPayroll(newPayroll);
+        pendingCount++;
+
+        // Mark advances as deducted since payroll is being generated
+        for (const advance of approvedAdvances) {
+          await advancesService.update(advance.id, { status: 'Deducted' });
         }
-      });
-      
+      }
+
+      toast.success(`Payroll generated: ${pendingCount} staff members, period ${formatPKDate(periodStart)} – ${formatPKDate(periodEnd)}`);
+    } catch (error) {
+      console.error('Payroll generation error:', error);
+      toast.error('Failed to generate payroll. Check console for details.');
+    } finally {
       setIsGenerating(false);
-      toast.success(`Payroll generated for ${staff.length} staff members`);
-    }, 1500);
+    }
   };
 
   return (
@@ -103,39 +118,52 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl">
+        {(() => {
+          const paidRecords = payrolls.filter(r => r.status === 'Paid');
+          const pendingRecords = payrolls.filter(r => r.status === 'Pending');
+          const paidTotal = paidRecords.reduce((sum, r) => sum + r.net_salary, 0);
+          const pendingTotal = pendingRecords.reduce((sum, r) => sum + r.net_salary, 0);
+          const allShifts = payrolls.reduce((sum, r) => sum + r.shifts_worked, 0);
+          const activeStaff = new Set(payrolls.map(r => r.staff_id)).size;
+
+          return (
+            <>
+        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 p-6 rounded-3xl">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-emerald-600 rounded-xl text-white">
               <CheckCircle2 size={20} />
             </div>
-            <span className="text-emerald-900 font-bold">Paid This Period</span>
+            <span className="text-emerald-900 dark:text-emerald-400 font-bold">Paid This Period</span>
           </div>
-          <p className="text-3xl font-black text-emerald-900">{formatPKR(1200000)}</p>
-          <p className="text-xs text-emerald-600 font-bold mt-1">84 Staff Members</p>
+          <p className="text-3xl font-black text-emerald-900 dark:text-emerald-100">{formatPKR(paidTotal)}</p>
+          <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-1">{paidRecords.length} Staff Members</p>
         </div>
-        <div className="bg-amber-50 border border-amber-100 p-6 rounded-3xl">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-6 rounded-3xl">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-amber-600 rounded-xl text-white">
               <Clock size={20} />
             </div>
-            <span className="text-amber-900 font-bold">Pending Approval</span>
+            <span className="text-amber-900 dark:text-amber-400 font-bold">Pending Approval</span>
           </div>
-          <p className="text-3xl font-black text-amber-900">{formatPKR(450000)}</p>
-          <p className="text-xs text-amber-600 font-bold mt-1">32 Staff Members</p>
+          <p className="text-3xl font-black text-amber-900 dark:text-amber-100">{formatPKR(pendingTotal)}</p>
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-bold mt-1">{pendingRecords.length} Staff Members</p>
         </div>
-        <div className="bg-slate-100 border border-slate-200 p-6 rounded-3xl">
+        <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-3xl">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-slate-600 rounded-xl text-white">
               <DollarSign size={20} />
             </div>
-            <span className="text-slate-900 font-bold">Total Budget</span>
+            <span className="text-slate-900 dark:text-slate-100 font-bold">Total Budget</span>
           </div>
-          <p className="text-3xl font-black text-slate-900">{formatPKR(2800000)}</p>
-          <p className="text-xs text-slate-500 font-bold mt-1">Next Cycle: April 15</p>
+          <p className="text-3xl font-black text-slate-900 dark:text-white">{formatPKR(paidTotal + pendingTotal)}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1">{allShifts} shifts · {activeStaff} staff</p>
         </div>
+            </>
+          );
+        })()}
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
         <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -210,14 +238,14 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <p className="font-black text-slate-900">{formatPKR(record.net_salary)}</p>
+                        <p className="font-black text-slate-900 dark:text-white">{formatPKR(record.net_salary)}</p>
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-                            {record.shifts_worked} Shifts @ {formatPKR(record.shift_rate)}
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter">
+                            ☀️{record.day_shifts_completed} 🌙{record.night_shifts_completed} = {record.shifts_worked} shifts @ {formatPKR(record.shift_rate)}
                           </span>
                           {record.deductions_advances && record.deductions_advances > 0 && (
                             <span className="text-[10px] text-rose-500 font-bold uppercase tracking-tighter">
-                              - {formatPKR(record.deductions_advances)} (Advance)
+                              − {formatPKR(record.deductions_advances)} (advances)
                             </span>
                           )}
                         </div>
@@ -245,7 +273,7 @@ export const PayrollModule = ({ staff }: { staff: Staff[] }) => {
                             Disburse
                           </button>
                         )}
-                        <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all">
+                        <button className="p-2 text-slate-400 hover:text-slate-900 dark:text-slate-100 hover:bg-slate-100 rounded-xl transition-all">
                           <Download size={18} />
                         </button>
                       </div>

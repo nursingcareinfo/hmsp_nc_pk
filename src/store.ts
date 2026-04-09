@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import { Staff, Patient, Notification, District, Designation, StaffStatus, PatientStatus, Payroll, StaffCategory } from './types';
 
 interface UIState {
-  activeTab: 'dashboard' | 'staff' | 'patients' | 'scheduling' | 'notifications' | 'payroll' | 'settings' | 'market';
-  setActiveTab: (tab: 'dashboard' | 'staff' | 'patients' | 'scheduling' | 'notifications' | 'payroll' | 'settings' | 'market') => void;
+  activeTab: 'dashboard' | 'staff' | 'patients' | 'scheduling' | 'notifications' | 'payroll' | 'advances' | 'settings' | 'market' | 'hr';
+  setActiveTab: (tab: 'dashboard' | 'staff' | 'patients' | 'scheduling' | 'notifications' | 'payroll' | 'advances' | 'settings' | 'market' | 'hr') => void;
   
   theme: 'light' | 'dark';
   toggleTheme: () => void;
@@ -40,7 +40,7 @@ export const useUIStore = create<UIState>((set) => ({
   activeTab: 'dashboard',
   setActiveTab: (tab) => set({ activeTab: tab }),
   
-  theme: 'light',
+  theme: 'dark',
   toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
   
   searchQuery: '',

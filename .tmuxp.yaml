@@ -1,0 +1,187 @@
+# ============================================
+# HMSP Expert Tmuxp Workspace
+# Inspired by: Adventuring Party, dmux, Primeagen
+# ============================================
+#
+# Load:    tmuxp load .tmuxp.yaml
+# Resume:  tmux attach -t hmsp
+# Reload:  tmuxp load -y .tmuxp.yaml
+#
+# WORKFLOW PATTERNS:
+# ─────────────────────────────────────────────
+# 1. PARALLEL AGENTS: Each AI agent in its own pane,
+#    working on separate tasks simultaneously
+#
+# 2. WATCH MODE: Left side runs tests/build,
+#    right side shows output — instant feedback
+#
+# 3. IMPLEMENT → REVIEW: Agent 1 implements,
+#    Agent 2 reviews (like Adventuring Party)
+#
+# 4. DB DEV LOOP: Top pane runs server, bottom
+#    is psql for live queries
+# ─────────────────────────────────────────────
+
+session_name: hmsp
+start_directory: ./
+suppress_history: false
+
+# Global environment
+env:
+  EDITOR: nvim
+  TERM: tmux-256color
+
+windows:
+  # ──── WINDOW 0: MAIN DEV ─────────────────
+  # Layout: [ Vite Server | tsc --watch ]
+  # Purpose: Real-time feedback loop
+  - window_name: ⚡dev
+    layout: even-horizontal
+    options:
+      automatic-rename: off
+    focus: true
+    panes:
+      - focus: true
+        shell_command:
+          - printf "🚀 Vite Dev Server\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━\n"
+          - npm run dev
+
+      - shell_command:
+          - printf "👀 TypeScript Watch\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━\n"
+          - npx tsc --noEmit --watch --pretty
+
+  # ──── WINDOW 1: AI IMPLEMENTER ──────────
+  # Layout: [ Qwen (primary agent) ]
+  # Purpose: Main coding agent — implement features
+  - window_name: 🤖qwen
+    layout: main-vertical
+    panes:
+      - focus: true
+        shell_command:
+          - printf "🔷 Qwen Code — Primary Implementer\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+          - fish
+
+      - shell_command:
+          - printf "📋 Useful commands:\n"
+          - printf "  • qwen <prompt>     — Ask Qwen\n"
+          - printf "  • Ctrl+B [n]        — Switch window\n"
+          - printf "  • Ctrl+B z          — Zoom pane\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+          - fish
+
+  # ──── WINDOW 2: AI REVIEWER ──────────────
+  # Layout: [ Gemini (reviewer) ]
+  # Purpose: Review code, ask questions, debug
+  - window_name: 🟢gemini
+    layout: main-vertical
+    panes:
+      - focus: true
+        shell_command:
+          - printf "🟢 Gemini Code — Reviewer/Debugger\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+          - fish
+
+      - shell_command:
+          - printf "🔍 Review mode:\n"
+          - printf "  • gemini <prompt>    — Ask Gemini\n"
+          - printf "  • Review diffs here  — git diff\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+          - fish
+
+  # ──── WINDOW 3: MULTI-AGENT ORCHESTRATOR ─
+  # Layout: [ AgentPipe TUI ]
+  # Purpose: Multi-agent conversations, debates
+  - window_name: 🎭orchestrator
+    layout: even-vertical
+    panes:
+      - shell_command:
+          - printf "🎭 AgentPipe Multi-Agent\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+          - printf "Run: agentpipe run -a qwen -a gemini -a claude -t --metrics\n"
+          - printf "Or:  agentpipe run -a qwen -a gemini -p 'Discuss...' --metrics\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+          - fish
+
+      - shell_command:
+          - printf "💡 AgentPipe Patterns:\n"
+          - printf "  ┌─────────────────────────────────────┐\n"
+          - printf "  │ # Debate:                           │\n"
+          - printf "  │ agentpipe run -a qwen:A -a gemini:B │\n"
+          - printf "  │   -p 'Is React better than Vue?'    │\n"
+          - printf "  │                                     │\n"
+          - printf "  │ # Implement + Review                │\n"
+          - printf "  │ agentpipe run -a qwen:Dev -a claude │\n"
+          - printf "  │   -p 'Review src/Security.ts'       │\n"
+          - printf "  └─────────────────────────────────────┘\n"
+          - fish
+
+  # ──── WINDOW 4: DATABASE ─────────────────
+  # Layout: [ Docker | psql ]
+  # Purpose: DB management, live queries
+  - window_name: 🐘database
+    layout: even-horizontal
+    panes:
+      - shell_command:
+          - cd ../supabase-local 2>/dev/null || cd supabase-local 2>/dev/null
+          - printf "🐳 Supabase Local\n"
+          - printf "━━━━━━━━━━━━━━━━━━\n"
+          - docker-compose ps
+          - printf "\nTo restart: docker-compose up -d\n"
+          - fish
+
+      - shell_command:
+          - printf "🔗 PostgreSQL Shell\n"
+          - printf "━━━━━━━━━━━━━━━━━━\n"
+          - printf "Connect: docker exec -it homecare-supabase \\\n"
+          - printf "  psql -U postgres -d homecare_staff\n"
+          - printf "━━━━━━━━━━━━━━━━━━\n"
+          - fish
+
+  # ──── WINDOW 5: GIT WORKFLOW ─────────────
+  # Layout: [ git status/lazygit | commands ]
+  # Purpose: Version control, PR management
+  - window_name: 📦git
+    layout: main-vertical
+    panes:
+      - focus: true
+        shell_command:
+          - printf "📊 Git Status\n"
+          - printf "━━━━━━━━━━━━━━\n"
+          - git status --short
+          - printf "\n"
+          - printf "📜 Recent:\n"
+          - git log --oneline -8 --color
+          - printf "\n(lazygit if installed: lazygit)\n"
+          - fish
+
+      - shell_command:
+          - printf "📝 Git Commands:\n"
+          - printf "━━━━━━━━━━━━━━━━\n"
+          - printf "  git add -A                        \n"
+          - printf "  git commit -m 'feat: message'     \n"
+          - printf "  git push                          \n"
+          - printf "  git diff --staged                 \n"
+          - printf "  git log --oneline --graph -10     \n"
+          - printf "  git stash && git stash pop        \n"
+          - printf "━━━━━━━━━━━━━━━━\n"
+          - fish
+
+  # ──── WINDOW 6: UTILITIES ────────────────
+  # Layout: [ Logs/Debugging ]
+  # Purpose: Tail logs, debug, monitor
+  - window_name: 🔧utils
+    layout: even-horizontal
+    panes:
+      - shell_command:
+          - printf "📡 Network/Server Logs\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━━\n"
+          - fish
+
+      - shell_command:
+          - printf "⚙️  System Monitor\n"
+          - printf "━━━━━━━━━━━━━━━━━━━━━━\n"
+          - printf "htop / btop / nvtop\n"
+          - fish

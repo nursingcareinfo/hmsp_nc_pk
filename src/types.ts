@@ -39,7 +39,20 @@ export type District =
   | 'Other';
 
 export type StaffStatus = 'Active' | 'On Leave' | 'Inactive';
-export type PatientStatus = 'Active' | 'Discharged' | 'Pending';
+export type PatientStatus =
+  | 'Active'
+  | 'Pending'
+  | 'Discharged'     // Recovered — no staff needed
+  | 'Deceased'       // Patient passed away
+  | 'Cancelled'      // Contract cancelled by family
+  | 'Dissatisfied';  // Not satisfied with services/staff
+
+export type PatientEndReason =
+  | 'recovered'
+  | 'deceased'
+  | 'contract_cancelled'
+  | 'dissatisfied'
+  | null;
 
 export type StaffCategory = 
   | 'Management'
@@ -104,6 +117,27 @@ export interface AdvancePayment {
   status: 'Pending' | 'Approved' | 'Deducted' | 'Cancelled';
 }
 
+export interface AdvanceRecord {
+  id: string;
+  staff_id: string;
+  staff_name: string;
+  staff_assigned_id: string;
+  staff_designation: string;
+  staff_district: string;
+  staff_salary: number;
+  amount: number;
+  advance_date: string;
+  reason: string;
+  payment_method: string;
+  notes?: string;
+  status: 'Pending' | 'Approved' | 'Deducted' | 'Cancelled';
+  deducted_from_salary: number;
+  deducted_date?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Staff {
   id: string;
   assigned_id: string; // NC-KHI-XXX
@@ -154,10 +188,12 @@ export interface Staff {
   photo_url?: string;
   cnic_image_urls?: string[];
   form_image_urls?: string[];
+  reliability_score?: number;
 }
 
 export interface Patient {
   id: string;
+  patient_id_assigned?: string; // NC-PAT-0001, auto-generated
   full_name: string;
   cnic: string;
   contact: string;
@@ -205,6 +241,18 @@ export interface Patient {
   advance_payment_date?: string;
   cnic_image_urls?: string[];
   form_image_urls?: string[];
+  // Shift preferences
+  needs_day_shift: boolean;
+  needs_night_shift: boolean;
+  day_shift_start?: string;
+  day_shift_end?: string;
+  night_shift_start?: string;
+  night_shift_end?: string;
+  shift_instructions?: string;
+  // Service end tracking
+  end_reason?: PatientEndReason;
+  end_date?: string;
+  end_notes?: string;
 }
 
 export interface Notification {
@@ -242,4 +290,63 @@ export interface Payroll {
   net_salary: number;
   status: 'Pending' | 'Paid' | 'Cancelled';
   payment_date?: string;
+  day_shifts_completed: number;
+  night_shifts_completed: number;
+}
+
+export interface DutyAssignment {
+  id: string;
+  patient_id: string;
+  staff_id: string;
+  shift_type: 'day' | 'night';
+  duty_date: string;
+  shift_start?: string;
+  shift_end?: string;
+  status: 'assigned' | 'confirmed' | 'completed' | 'absent' | 'no_show' | 'cancelled';
+  clock_in_time?: string;
+  clock_out_time?: string;
+  clock_in_location?: string;
+  clock_out_location?: string;
+  notes?: string;
+  admin_notes?: string;
+  is_payroll_processed: boolean;
+  assigned_by?: string;
+  assigned_at: string;
+  updated_at: string;
+}
+
+export interface PatientAdvance {
+  id: string;
+  patient_id: string;
+  amount: number;
+  advance_date: string;
+  payment_method: 'Cash' | 'Bank Transfer' | 'JazzCash' | 'EasyPaisa' | 'Cheque' | 'Other';
+  reason?: string;
+  notes?: string;
+  status: 'received' | 'adjusted' | 'refunded';
+  invoice_number: string;
+  invoice_generated: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffLicense {
+  id: string;
+  staff_id: string;
+  license_type: 'PNC' | 'SLC' | 'BLS' | 'ACLS' | 'CNA' | 'RN' | 'OTHER';
+  license_number: string;
+  issuing_body: string;
+  issue_date?: string;
+  expiry_date: string;
+  status: 'active' | 'expiring_soon' | 'expired' | 'renewed' | 'revoked';
+  document_url?: string;
+  notes?: string;
+  renewal_date?: string;
+  renewal_cost?: number;
+  renewed_by?: string;
+  renewed_at?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
 }

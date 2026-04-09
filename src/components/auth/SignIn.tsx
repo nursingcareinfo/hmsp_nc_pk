@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
-import { auth } from '../../firebase';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { supabase } from '../../lib/supabase';
 import { Logo } from '../Logo';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Loader2, Lock, ArrowRight, UserCircle, Shield, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+const AUTH_DOMAIN = '@hmsp.local';
+
+// Pre-defined users - only these two can log in
+const ALLOWED_USERS = [
+  { username: 'theo', displayName: 'THEO', role: 'Manager', icon: Shield, color: 'teal' },
+  { username: 'atif', displayName: 'ATIF ALVI', role: 'CEO', icon: Crown, color: 'amber' },
+];
 
 interface SignInProps {
   theme: 'light' | 'dark';
@@ -18,29 +25,49 @@ interface SignInProps {
 }
 
 export const SignIn: React.FC<SignInProps> = ({ theme, onSuccess, onToggleView }) => {
-  const [email, setEmail] = useState('');
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const selectedUserData = ALLOWED_USERS.find(u => u.username === selectedUser);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedUser) {
+      toast.error('Please select a user first');
+      return;
+    }
     setIsLoading(true);
     setError(null);
 
+    const email = selectedUser.toLowerCase().trim() + AUTH_DOMAIN;
+
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      if (userCredential.user) {
-        toast.success('Signed in successfully!');
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (data?.session && data?.user) {
+        toast.success(`Welcome, ${selectedUserData?.displayName}!`);
         onSuccess();
+      } else {
+        const msg = 'Please verify your account before signing in.';
+        setError(msg);
+        toast.error(msg);
       }
     } catch (err: any) {
       console.error('Sign in error:', err);
       let msg = 'Failed to sign in';
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        msg = 'Invalid email or password';
-      } else if (err.code === 'auth/too-many-requests') {
-        msg = 'Too many failed login attempts. Please try again later.';
+      if (err.message?.includes('Invalid login credentials')) {
+        msg = 'Invalid password. Please try again.';
+      } else if (err.message?.includes('Email not confirmed')) {
+        msg = 'Please contact admin to verify your account.';
+      } else {
+        msg = err.message || msg;
       }
       setError(msg);
       toast.error(msg);
@@ -49,109 +76,133 @@ export const SignIn: React.FC<SignInProps> = ({ theme, onSuccess, onToggleView }
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      if (result.user) {
-        toast.success('Signed in with Google!');
-        onSuccess();
-      }
-    } catch (err: any) {
-      console.error('Google login error:', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        toast.error(err.message || 'Failed to sign in with Google');
-      }
-    }
-  };
-
   return (
     <div className="w-full max-w-md space-y-8 p-8 rounded-[32px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
+      {/* Header */}
       <div className="text-center space-y-2">
         <div className="flex justify-center mb-6">
           <Logo theme={theme} size="lg" />
         </div>
         <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Welcome Back</h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium">
-          Sign in to your account to continue
+          Select your account to continue
         </p>
       </div>
 
-      <div className="space-y-4">
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white font-bold rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-3 group"
-        >
-          <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          Sign in with Google
-        </button>
+      {/* User Selection Cards */}
+      <div className="grid grid-cols-2 gap-3">
+        {ALLOWED_USERS.map((user) => {
+          const Icon = user.icon;
+          const isSelected = selectedUser === user.username;
+          const colorMap: Record<string, string> = {
+            teal: isSelected
+              ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/30 ring-2 ring-teal-500/20'
+              : 'border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-600',
+            amber: isSelected
+              ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 ring-2 ring-amber-500/20'
+              : 'border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600',
+          };
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white dark:bg-slate-900 px-2 text-slate-500 font-bold">Or continue with email</span>
-          </div>
-        </div>
+          return (
+            <button
+              key={user.username}
+              type="button"
+              onClick={() => {
+                setSelectedUser(user.username);
+                setError(null);
+                setPassword('');
+              }}
+              className={cn(
+                'flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all cursor-pointer',
+                colorMap[user.color]
+              )}
+            >
+              <div className={cn(
+                'w-12 h-12 rounded-full flex items-center justify-center',
+                isSelected
+                  ? user.color === 'teal' ? 'bg-teal-500 text-white' : 'bg-amber-500 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+              )}>
+                <Icon size={24} />
+              </div>
+              <div className="text-center">
+                <p className="font-black text-sm text-slate-900 dark:text-white">{user.displayName}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{user.role}</p>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-4">
-          <div className="relative group">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={20} />
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all dark:text-white"
-            />
+      {/* Password Form (shown after user selection) */}
+      {selectedUser && (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
+            <UserCircle size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-400 font-medium">Signing in as</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">
+                {selectedUserData?.displayName}
+                <span className="text-slate-400 font-normal ml-1">({selectedUserData?.role})</span>
+              </p>
+            </div>
           </div>
 
           <div className="relative group">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={20} />
             <input
               type="password"
-              placeholder="Password"
+              placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoFocus
+              autoComplete="current-password"
               className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all dark:text-white"
             />
           </div>
-        </div>
 
-        {error && (
-          <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-sm font-medium">
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-4 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-bold rounded-2xl shadow-lg shadow-teal-600/20 hover:shadow-xl hover:shadow-teal-600/30 transition-all flex items-center justify-center gap-2 group"
-        >
-          {isLoading ? (
-            <Loader2 className="animate-spin" size={20} />
-          ) : (
-            <>
-              Sign In
-              <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
-            </>
+          {error && (
+            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-sm font-medium">
+              {error}
+            </div>
           )}
-        </button>
-      </form>
 
-      <div className="text-center pt-4">
-        <button
-          onClick={onToggleView}
-          className="text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 font-bold transition-colors"
-        >
-          Don't have an account? Sign Up
-        </button>
+          <button
+            type="submit"
+            disabled={isLoading || !password}
+            className="w-full py-4 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 disabled:bg-slate-400 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 group disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <>
+                Sign In as {selectedUserData?.displayName}
+                <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+              </>
+            )}
+          </button>
+
+          {/* Change user link */}
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedUser(null);
+              setPassword('');
+              setError(null);
+            }}
+            className="w-full text-center text-slate-400 hover:text-teal-500 text-xs font-bold transition-colors"
+          >
+            ← Switch to a different account
+          </button>
+        </form>
+      )}
+
+      {/* Sign Up (hidden for now - admin creates accounts) */}
+      <div className="text-center pt-4 border-t border-slate-100 dark:border-slate-800">
+        <p className="text-slate-400 text-xs">
+          H.M.S.P — Home Medical Service Provider
+        </p>
       </div>
     </div>
   );

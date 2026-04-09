@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "hmsp-nc-pk",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,7 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "format": "prettier --write src/ 2>/dev/null || true",
+    "pre-push": "npm run typecheck && npm run build",
+    "pre-release": "npm run typecheck && npm run build && npm run clean"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -20,6 +24,7 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^12.11.0",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.0",

@@ -1,14 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  UserRound, 
-  Search, 
-  Plus, 
-  Filter, 
-  Download, 
-  LayoutGrid, 
-  List, 
-  Phone, 
-  MessageSquare, 
+import { useQuery } from '@tanstack/react-query';
+import {
+  UserRound,
+  Search,
+  Plus,
+  Filter,
+  Download,
+  LayoutGrid,
+  List,
+  Phone,
+  MessageSquare,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
@@ -36,14 +37,25 @@ import {
   ClipboardList,
   UserCheck,
   Camera,
-  Sparkles
+  Sparkles,
+  Sun,
+  Moon,
+  BedDouble,
+  Repeat,
+  AlertTriangle,
+  Skull,
+  HeartOff,
+  FileX,
+  DollarSign,
+  ReceiptText,
+  Receipt,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
 import { dataService } from '../dataService';
-import { Patient, District, PatientStatus, Staff } from '../types';
+import { Patient, District, PatientStatus, PatientEndReason, Staff } from '../types';
 import { format } from 'date-fns';
-import { formatPKR, formatPKDate, formatCNIC, formatPKPhone } from '../lib/utils';
+import { formatPKR, formatPKDate, formatCNIC, formatPKPhone, autoFormatCNIC, autoFormatPhone } from '../lib/utils';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useForm } from 'react-hook-form';
@@ -55,6 +67,14 @@ import { Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ConfirmationModal } from './ConfirmationModal';
 import { CameraCapture } from './CameraCapture';
+import { StaffMatchingModal } from './StaffMatchingModal';
+import { ShiftAssignmentModal } from './ShiftAssignmentModal';
+import { WhatsAppOnboardingModal } from './WhatsAppOnboardingModal';
+import { matchStaffToPatient, MatchResult } from '../services/matchingService';
+import { supabase } from '../lib/supabase';
+import { patientAdvancesService } from '../services/patientAdvancesService';
+import { generateAdvanceInvoice } from '../utils/generateInvoicePdf';
+import { PatientAdvance } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -77,24 +97,24 @@ const DISTRICTS: District[] = [
 const patientSchema = z.object({
   full_name: z.string().min(3, 'Full name is required'),
   cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, 'Invalid CNIC format (XXXXX-XXXXXXX-X)'),
-  contact: z.string().regex(/^\+92 3\d{2} \d{7}$/, 'Invalid phone format (+92 3XX XXXXXXX)'),
+  contact: z.string().regex(/^(\+92\s?3\d{2}\s?\d{7}|03\d{2}-?\d{7}|923\d{9})$/, 'Invalid phone format (+92 3XX XXXXXXX or 03XX-XXXXXXX)'),
   alt_contact: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   whatsapp: z.string().optional(),
   address: z.string().min(10, 'Address is too short'),
   area: z.string().optional(),
   city: z.string().optional(),
-  district: z.string(),
-  status: z.string(),
-  admission_date: z.string(),
+  district: z.string().default('Karachi South'),
+  status: z.string().default('Active'),
+  admission_date: z.string().default(new Date().toISOString().split('T')[0]),
   date_of_birth: z.string().optional(),
-  gender: z.enum(['Male', 'Female']),
+  gender: z.enum(['Male', 'Female']).optional().default('Male'),
   blood_group: z.string().optional(),
   marital_status: z.string().optional(),
   guardian_name: z.string().min(3, 'Guardian name is required'),
-  guardian_contact: z.string().regex(/^\+92 3\d{2} \d{7}$/, 'Invalid phone format (+92 3XX XXXXXXX)'),
+  guardian_contact: z.string().regex(/^(\+92\s?3\d{2}\s?\d{7}|03\d{2}-?\d{7}|923\d{9})$/, 'Invalid phone format (+92 3XX XXXXXXX or 03XX-XXXXXXX)'),
   guardian_cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, 'Invalid CNIC format (XXXXX-XXXXXXX-X)'),
-  guardian_relationship: z.string(),
+  guardian_relationship: z.string().default('Son'),
   medical_condition: z.string().min(5, 'Medical condition is required'),
   primary_diagnosis: z.string().optional(),
   current_condition: z.string().optional(),
@@ -111,12 +131,12 @@ const patientSchema = z.object({
   doctor_phone: z.string().optional(),
   doctor_notes: z.string().optional(),
   special_requirements: z.string().optional(),
-  service_type: z.string(),
-  frequency: z.string(),
-  duration: z.string(),
-  billing_package: z.string(),
-  billing_rate: z.number().min(0),
-  payment_method: z.string(),
+  service_type: z.string().default('24/7 Nursing Care'),
+  frequency: z.string().default('Daily'),
+  duration: z.string().default('30 Days'),
+  billing_package: z.string().default('Standard'),
+  billing_rate: z.number().min(0).default(0),
+  payment_method: z.string().default('Cash'),
   advance_payment_received: z.boolean().default(false),
   advance_payment_date: z.string().optional(),
   cnic_image_urls: z.array(z.string()).optional(),
@@ -126,10 +146,13 @@ const patientSchema = z.object({
 // --- Components ---
 
 const StatusBadge = ({ status }: { status: PatientStatus }) => {
-  const colors = {
-    Active: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    Discharged: "bg-slate-50 text-slate-600 border-slate-100",
-    Pending: "bg-amber-50 text-amber-600 border-amber-100"
+  const colors: Record<PatientStatus, string> = {
+    Active: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800",
+    Discharged: "bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800",
+    Pending: "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800",
+    Deceased: "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800",
+    Cancelled: "bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-800",
+    Dissatisfied: "bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 border-violet-100 dark:border-violet-800"
   };
   
   return (
@@ -142,8 +165,120 @@ const StatusBadge = ({ status }: { status: PatientStatus }) => {
   );
 };
 
-const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate }: { patient: Patient, staff: Staff[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void> }) => {
-  const assignedStaff = staff.find(s => s.id === patient.assigned_staff_id);
+/**
+ * Displays assigned staff for a patient's day/night shifts today.
+ * Shows up to 2 staff per shift with "Assign Now" button if no staff assigned.
+ */
+const ShiftStaffDisplay = ({
+  patient,
+  allStaff,
+  onAssign,
+  refreshKey = 0,
+}: {
+  patient: Patient;
+  allStaff: Staff[];
+  onAssign: () => void;
+  refreshKey?: number;
+}) => {
+  const [dayStaff, setDayStaff] = useState<Staff[]>([]);
+  const [nightStaff, setNightStaff] = useState<Staff[]>([]);
+
+  React.useEffect(() => {
+    if (!supabase) return;
+    const today = new Date().toISOString().split('T')[0];
+    supabase
+      .from('duty_assignments')
+      .select('staff_id, shift_type, status')
+      .eq('patient_id', patient.id)
+      .eq('duty_date', today)
+      .in('status', ['assigned', 'confirmed', 'completed'])
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        const dayIds = data.filter(a => a.shift_type === 'day').map(a => a.staff_id);
+        const nightIds = data.filter(a => a.shift_type === 'night').map(a => a.staff_id);
+        setDayStaff(allStaff.filter(s => dayIds.includes(s.id)));
+        setNightStaff(allStaff.filter(s => nightIds.includes(s.id)));
+      });
+  }, [patient.id, allStaff, refreshKey]);
+
+  const hasAnyAssigned = dayStaff.length > 0 || nightStaff.length > 0;
+
+  if (!hasAnyAssigned) {
+    return (
+      <button
+        onClick={onAssign}
+        className="w-full py-2.5 bg-white dark:bg-slate-900 text-sky-600 rounded-xl text-xs font-bold border border-sky-200 hover:bg-sky-100 transition-all flex items-center justify-center gap-2"
+      >
+        <UserPlus size={14} />
+        Assign Now
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Day Shift */}
+      <div className="flex items-center gap-2">
+        <Sun size={14} className="text-amber-500 shrink-0" />
+        <span className="text-[10px] font-bold text-slate-500 uppercase w-10">Day</span>
+        {dayStaff.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 flex-1">
+            {dayStaff.map(s => (
+              <span key={s.id} className="px-2 py-1 bg-white rounded-lg text-[10px] font-bold text-sky-700 border border-sky-100">
+                {s.full_name}
+              </span>
+            ))}
+            {dayStaff.length < 2 && (
+              <button
+                onClick={onAssign}
+                className="px-2 py-1 bg-sky-50 rounded-lg text-[10px] font-bold text-sky-500 border border-dashed border-sky-200 hover:bg-sky-100 transition-all"
+              >
+                + Add
+              </button>
+            )}
+          </div>
+        ) : (
+          <span className="text-[10px] text-slate-400 italic">Not assigned</span>
+        )}
+      </div>
+
+      {/* Night Shift */}
+      <div className="flex items-center gap-2">
+        <Moon size={14} className="text-indigo-500 shrink-0" />
+        <span className="text-[10px] font-bold text-slate-500 uppercase w-10">Night</span>
+        {nightStaff.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 flex-1">
+            {nightStaff.map(s => (
+              <span key={s.id} className="px-2 py-1 bg-white rounded-lg text-[10px] font-bold text-indigo-700 border border-indigo-100">
+                {s.full_name}
+              </span>
+            ))}
+            {nightStaff.length < 2 && (
+              <button
+                onClick={onAssign}
+                className="px-2 py-1 bg-indigo-50 rounded-lg text-[10px] font-bold text-indigo-500 border border-dashed border-indigo-200 hover:bg-indigo-100 transition-all"
+              >
+                + Add
+              </button>
+            )}
+          </div>
+        ) : (
+          <span className="text-[10px] text-slate-400 italic">Not assigned</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch, onEndServices }: {
+  patient: Patient,
+  staff: Staff[],
+  onClick: () => void,
+  onEdit: () => void,
+  onUpdate: (id: string, data: any) => Promise<void>,
+  onMatch: (patient: Patient) => void,
+  onEndServices: (patient: Patient) => void,
+}) => {
   const [isQuickEditing, setIsQuickEditing] = useState(false);
   const [editBuffer, setEditBuffer] = useState({
     full_name: patient.full_name,
@@ -151,14 +286,36 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate }: { patient: P
     billing_rate: patient.billing_rate
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [dayStaff, setDayStaff] = useState<Staff[]>([]);
+  const [nightStaff, setNightStaff] = useState<Staff[]>([]);
+
+  // Fetch today's duty assignments for this patient (up to 2 per shift)
+  React.useEffect(() => {
+    if (!supabase) return;
+    const today = new Date().toISOString().split('T')[0];
+    supabase
+      .from('duty_assignments')
+      .select('staff_id, shift_type, status')
+      .eq('patient_id', patient.id)
+      .eq('duty_date', today)
+      .in('status', ['assigned', 'confirmed', 'completed'])
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        const dayIds = data.filter(a => a.shift_type === 'day').map(a => a.staff_id);
+        const nightIds = data.filter(a => a.shift_type === 'night').map(a => a.staff_id);
+        setDayStaff(staff.filter(s => dayIds.includes(s.id)));
+        setNightStaff(staff.filter(s => nightIds.includes(s.id)));
+      });
+  }, [patient.id, staff]);
 
   const hasChanges = 
     editBuffer.full_name !== patient.full_name || 
     editBuffer.status !== patient.status || 
     editBuffer.billing_rate !== patient.billing_rate;
 
-  const handleSave = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleSave = async (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) e.stopPropagation();
+    if (!hasChanges) return;
     setIsSaving(true);
     try {
       await onUpdate(patient.id, editBuffer);
@@ -168,6 +325,16 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate }: { patient: P
       toast.error('Failed to update patient');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && hasChanges) {
+      e.preventDefault();
+      handleSave();
+    }
+    if (e.key === 'Escape') {
+      setIsQuickEditing(false);
     }
   };
   
@@ -211,11 +378,12 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate }: { patient: P
         </div>
         <div className="flex-1">
           {isQuickEditing ? (
-            <input 
+            <input
               autoFocus
               value={editBuffer.full_name}
               onChange={(e) => setEditBuffer(prev => ({ ...prev, full_name: e.target.value }))}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={handleKeyDown}
               className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-sky-500 dark:text-white"
             />
           ) : (
@@ -233,21 +401,25 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate }: { patient: P
         <div className="flex flex-col gap-1.5 flex-1">
           {isQuickEditing ? (
             <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-              <select 
+              <select
                 value={editBuffer.status}
                 onChange={(e) => setEditBuffer(prev => ({ ...prev, status: e.target.value as PatientStatus }))}
                 className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-[10px] font-bold uppercase focus:ring-2 focus:ring-sky-500"
               >
                 <option value="Active">Active</option>
                 <option value="Pending">Pending</option>
-                <option value="Discharged">Discharged</option>
+                <option value="Discharged">Discharged (Recovered)</option>
+                <option value="Deceased">Deceased</option>
+                <option value="Cancelled">Contract Cancelled</option>
+                <option value="Dissatisfied">Dissatisfied</option>
               </select>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-bold text-slate-400">Rs.</span>
-                <input 
+                <input
                   type="number"
                   value={editBuffer.billing_rate}
                   onChange={(e) => setEditBuffer(prev => ({ ...prev, billing_rate: Number(e.target.value) }))}
+                  onKeyDown={handleKeyDown}
                   className="w-full bg-slate-50 border-none rounded-lg px-2 py-1 text-[10px] font-bold focus:ring-2 focus:ring-sky-500"
                 />
               </div>
@@ -297,45 +469,301 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate }: { patient: P
 
       {!isQuickEditing && (
         <>
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
-            <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Assigned Caregiver</p>
-            {assignedStaff ? (
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white text-xs font-bold">
-                  {assignedStaff.full_name.charAt(0)}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-900">{assignedStaff.full_name}</p>
-                  <p className="text-[10px] text-slate-500">{assignedStaff.designation}</p>
-                </div>
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 mb-6">
+            <p className="text-[10px] font-bold text-slate-400 uppercase mb-3">Today's Shift Staff</p>
+
+            {/* Day Shift Staff */}
+            <div className="flex items-start gap-3 p-3 bg-teal-50 dark:bg-teal-900/20 rounded-xl border border-teal-100 dark:border-teal-800 mb-2">
+              <div className="w-9 h-9 rounded-lg bg-teal-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
+                <Sun size={16} />
               </div>
-            ) : (
-              <div className="flex items-center gap-2 text-amber-600">
-                <AlertCircle size={14} />
-                <span className="text-xs font-bold">Unassigned</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">☀️ Day (7AM-7PM)</p>
+                {dayStaff.length > 0 ? (
+                  <div className="space-y-1 mt-1">
+                    {dayStaff.map(s => (
+                      <p key={s.id} className="text-xs font-bold text-slate-900 dark:text-white truncate">{s.full_name} <span className="text-[10px] font-normal text-slate-500">({s.designation})</span></p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic mt-1">Not assigned</p>
+                )}
               </div>
+            </div>
+
+            {/* Night Shift Staff */}
+            <div className="flex items-start gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-3">
+              <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
+                <Moon size={16} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">🌙 Night (7PM-7AM)</p>
+                {nightStaff.length > 0 ? (
+                  <div className="space-y-1 mt-1">
+                    {nightStaff.map(s => (
+                      <p key={s.id} className="text-xs font-bold text-slate-900 dark:text-white truncate">{s.full_name} <span className="text-[10px] font-normal text-slate-500">({s.designation})</span></p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic mt-1">Not assigned</p>
+                )}
+              </div>
+            </div>
+
+            {/* Service type badge */}
+            {patient.service_type && (
+              <span className="inline-block px-2 py-0.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-md text-[9px] font-black uppercase tracking-tighter border border-sky-100 dark:border-sky-800">
+                {patient.service_type}
+              </span>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); window.open(`tel:${patient.contact}`); }}
-              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-sky-50 hover:text-sky-600 transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 transition-all border border-slate-100 dark:border-slate-700"
             >
               <Phone size={14} />
               Call
             </button>
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${patient.contact.replace(/\s+/g, '')}`); }}
-              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all border border-slate-100 dark:border-slate-700"
             >
               <MessageSquare size={14} />
               WhatsApp
             </button>
           </div>
+
+          {/* End Services button — only for Active/Pending patients */}
+          {(patient.status === 'Active' || patient.status === 'Pending') && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEndServices(patient); }}
+              className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-all border border-rose-100 dark:border-rose-800/50"
+            >
+              <AlertTriangle size={14} />
+              End Services
+            </button>
+          )}
+
+          {/* End reason badge — shown when patient has an end reason */}
+          {patient.end_reason && (
+            <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Services Ended</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                {patient.end_reason === 'recovered' && '✓ Recovered — No staff needed'}
+                {patient.end_reason === 'deceased' && '✝ Patient Deceased'}
+                {patient.end_reason === 'contract_cancelled' && '✗ Contract Cancelled by Family'}
+                {patient.end_reason === 'dissatisfied' && '! Not Satisfied with Services'}
+              </p>
+              {patient.end_date && (
+                <p className="text-[10px] text-slate-400 mt-1">Ended: {formatPKDate(patient.end_date)}</p>
+              )}
+            </div>
+          )}
         </>
       )}
     </motion.div>
+  );
+};
+
+// --- End Services Modal ---
+
+const END_OPTIONS = [
+  {
+    value: 'recovered' as const,
+    label: 'Recovered',
+    description: 'Patient has recovered — no staff needed anymore',
+    status: 'Discharged' as PatientStatus,
+    icon: Heart,
+    color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
+  },
+  {
+    value: 'deceased' as const,
+    label: 'Patient Deceased',
+    description: 'Patient has passed away',
+    status: 'Deceased' as PatientStatus,
+    icon: Skull,
+    color: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/30'
+  },
+  {
+    value: 'contract_cancelled' as const,
+    label: 'Contract Cancelled',
+    description: 'Patient\'s family cancelled the contract',
+    status: 'Cancelled' as PatientStatus,
+    icon: FileX,
+    color: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/30'
+  },
+  {
+    value: 'dissatisfied' as const,
+    label: 'Not Satisfied',
+    description: 'Family not satisfied with services or staff',
+    status: 'Dissatisfied' as PatientStatus,
+    icon: HeartOff,
+    color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 border-violet-100 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/30'
+  }
+];
+
+const EndServicesModal = ({
+  isOpen,
+  onClose,
+  patient,
+  onEnd
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  patient: Patient;
+  onEnd: (reason: PatientEndReason, notes: string) => Promise<void>;
+}) => {
+  const [selected, setSelected] = useState<PatientEndReason>(null);
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!selected) {
+      toast.error('Please select a reason');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onEnd(selected, notes);
+      setSelected(null);
+      setNotes('');
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setSelected(null);
+    setNotes('');
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={handleCancel}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center">
+                    <AlertTriangle size={20} className="text-rose-600 dark:text-rose-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">End Services</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{patient.full_name}</p>
+                  </div>
+                </div>
+                <button onClick={handleCancel} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                  <X size={18} className="text-slate-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Options */}
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Why are services ending?</p>
+              {END_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                const isSelected = selected === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setSelected(option.value)}
+                    className={cn(
+                      "w-full flex items-start gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                      isSelected
+                        ? "border-sky-500 bg-sky-50 dark:bg-sky-900/20 shadow-lg shadow-sky-100 dark:shadow-sky-900/10"
+                        : option.color
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                      isSelected
+                        ? "bg-sky-600 text-white"
+                        : "bg-white dark:bg-slate-800",
+                      option.color.split(' ')[0]
+                    )}>
+                      <Icon size={20} className={isSelected ? "text-white" : option.color.split(' ')[0]} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn(
+                        "text-sm font-bold",
+                        isSelected ? "text-sky-900 dark:text-sky-100" : "text-slate-900 dark:text-white"
+                      )}>
+                        {option.label}
+                      </p>
+                      <p className={cn(
+                        "text-xs mt-0.5",
+                        isSelected ? "text-sky-700 dark:text-sky-300" : "text-slate-500 dark:text-slate-400"
+                      )}>
+                        {option.description}
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <CheckCircle2 size={20} className="text-sky-600 dark:text-sky-400 flex-shrink-0 mt-1" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Optional notes */}
+            <div className="px-6 pb-4">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
+                Additional Notes (optional)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any details about this case..."
+                rows={3}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent dark:text-white resize-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+              <button
+                onClick={handleCancel}
+                disabled={isSubmitting}
+                className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!selected || isSubmitting}
+                className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <AlertTriangle size={16} />
+                )}
+                Confirm End Services
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -351,6 +779,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
     defaultValues: initialData || {
       district: 'Karachi South',
       status: 'Active',
+      gender: 'Male',
       admission_date: new Date().toISOString().split('T')[0],
       billing_rate: 0,
       payment_method: 'Cash',
@@ -370,6 +799,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
         reset({
           district: 'Karachi South',
           status: 'Active',
+          gender: 'Male',
           admission_date: new Date().toISOString().split('T')[0],
           billing_rate: 0,
           payment_method: 'Cash',
@@ -442,9 +872,9 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative bg-white w-full max-w-3xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative bg-white dark:bg-slate-900 w-full max-w-3xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
       >
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-sky-600 text-white">
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-sky-600 text-white">
           <div>
             <h2 className="text-2xl font-black tracking-tight">Patient Registration</h2>
             <p className="text-sky-100 text-sm font-medium">Register a new patient for home care services.</p>
@@ -500,7 +930,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">CNIC Images ({watch('cnic_image_urls').length})</label>
                     <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                       {watch('cnic_image_urls').map((url: string, idx: number) => (
-                        <div key={idx} className="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden shrink-0 group">
+                        <div key={idx} className="relative w-20 h-20 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0 group">
                           <img src={url} className="w-full h-full object-cover" />
                           <button 
                             type="button"
@@ -522,7 +952,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Form Images ({watch('form_image_urls').length})</label>
                     <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                       {watch('form_image_urls').map((url: string, idx: number) => (
-                        <div key={idx} className="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden shrink-0 group">
+                        <div key={idx} className="relative w-20 h-20 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0 group">
                           <img src={url} className="w-full h-full object-cover" />
                           <button 
                             type="button"
@@ -556,14 +986,24 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">CNIC Number *</label>
-                  <input {...register('cnic')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.cnic && "ring-2 ring-rose-500 bg-rose-50")} placeholder="XXXXX-XXXXXXX-X" />
+                  <input
+                    {...register('cnic')}
+                    onChange={(e) => setValue('cnic', autoFormatCNIC(e.target.value))}
+                    className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.cnic && "ring-2 ring-rose-500 bg-rose-50")}
+                    placeholder="XXXXX-XXXXXXX-X"
+                  />
                   {errors.cnic && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.cnic.message as string}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Number *</label>
-                  <input {...register('contact')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.contact && "ring-2 ring-rose-500 bg-rose-50")} placeholder="+92 3XX XXXXXXX" />
+                  <input
+                    {...register('contact')}
+                    onChange={(e) => setValue('contact', autoFormatPhone(e.target.value))}
+                    className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.contact && "ring-2 ring-rose-500 bg-rose-50")}
+                    placeholder="03XX-XXXXXXX"
+                  />
                   {errors.contact && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.contact.message as string}</p>}
                 </div>
                 <div className="space-y-2">
@@ -601,12 +1041,22 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Guardian Contact *</label>
-                  <input {...register('guardian_contact')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.guardian_contact && "ring-2 ring-rose-500 bg-rose-50")} />
+                  <input
+                    {...register('guardian_contact')}
+                    onChange={(e) => setValue('guardian_contact', autoFormatPhone(e.target.value))}
+                    className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.guardian_contact && "ring-2 ring-rose-500 bg-rose-50")}
+                    placeholder="03XX-XXXXXXX"
+                  />
                   {errors.guardian_contact && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.guardian_contact.message as string}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Guardian CNIC *</label>
-                  <input {...register('guardian_cnic')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.guardian_cnic && "ring-2 ring-rose-500 bg-rose-50")} />
+                  <input
+                    {...register('guardian_cnic')}
+                    onChange={(e) => setValue('guardian_cnic', autoFormatCNIC(e.target.value))}
+                    className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.guardian_cnic && "ring-2 ring-rose-500 bg-rose-50")}
+                    placeholder="XXXXX-XXXXXXX-X"
+                  />
                   {errors.guardian_cnic && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.guardian_cnic.message as string}</p>}
                 </div>
               </div>
@@ -681,7 +1131,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                     className="w-5 h-5 rounded-lg border-slate-300 text-sky-600 focus:ring-sky-500"
                   />
                   <div>
-                    <label className="text-sm font-bold text-slate-900 block">Advance Payment Received</label>
+                    <label className="text-sm font-bold text-slate-900 dark:text-slate-100 block">Advance Payment Received</label>
                     <p className="text-[10px] text-slate-500 font-medium italic">Required for one month package</p>
                   </div>
                 </div>
@@ -700,7 +1150,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
           </form>
         </div>
 
-        <div className="p-8 border-t border-slate-100 flex justify-between bg-slate-50">
+        <div className="p-8 border-t border-slate-100 dark:border-slate-800 flex justify-between bg-slate-50">
           <button 
             type="button"
             onClick={onClose}
@@ -744,6 +1194,33 @@ export const PatientModule = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // Staff matching modal state (legacy, kept for duty roster)
+  const [isMatchingOpen, setIsMatchingOpen] = useState(false);
+  const [matchingPatient, setMatchingPatient] = useState<Patient | null>(null);
+
+  // Shift assignment modal state (for "Assign Now" button)
+  const [isShiftAssignOpen, setIsShiftAssignOpen] = useState(false);
+  const [shiftAssignPatient, setShiftAssignPatient] = useState<Patient | null>(null);
+  const [shiftAssignRefreshKey, setShiftAssignRefreshKey] = useState(0);
+
+  // End services modal state
+  const [isEndServicesOpen, setIsEndServicesOpen] = useState(false);
+  const [endServicesPatient, setEndServicesPatient] = useState<Patient | null>(null);
+
+  // WhatsApp onboarding modal state
+  const [isWhatsAppOnboardingOpen, setIsWhatsAppOnboardingOpen] = useState(false);
+
+  // Patient advance / invoice modal state
+  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
+  const [advancePatient, setAdvancePatient] = useState<Patient | null>(null);
+  const [patientAdvances, setPatientAdvances] = useState<PatientAdvance[]>([]);
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceMethod, setAdvanceMethod] = useState('Cash');
+  const [advanceReason, setAdvanceReason] = useState('');
+  const [advanceNotes, setAdvanceNotes] = useState('');
+  const [advanceDate, setAdvanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
 
   React.useEffect(() => {
     setAnalysisResult(null);
@@ -771,10 +1248,30 @@ export const PatientModule = () => {
     }
   };
 
+  // Use React Query for cached, deduplicated patient data
+  const { data: queryPatients = [], isLoading: isPatientLoading, refetch } = useQuery({
+    queryKey: ['patients'],
+    queryFn: dataService.getPatients,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Sync query data to local state for filtering
   React.useEffect(() => {
-    dataService.getPatients().then(setPatients);
-    dataService.getStaff().then(setStaff);
-  }, []);
+    if (queryPatients.length > 0) setPatients(queryPatients);
+  }, [queryPatients]);
+
+  // Fetch staff for caregiver display
+  const { data: queryStaff = [] } = useQuery({
+    queryKey: ['staff'],
+    queryFn: dataService.getStaff,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  React.useEffect(() => {
+    if (queryStaff.length > 0) setStaff(queryStaff);
+  }, [queryStaff]);
+
+  const isLoading = isPatientLoading;
 
   const filteredPatients = useMemo(() => {
     return patients.filter(p => {
@@ -821,7 +1318,7 @@ export const PatientModule = () => {
 
   const handleDeletePatient = async () => {
     if (!patientToDelete) return;
-    
+
     try {
       await dataService.deletePatient(patientToDelete.id);
       setPatients(patients.filter(p => p.id !== patientToDelete.id));
@@ -830,6 +1327,38 @@ export const PatientModule = () => {
       setSelectedPatient(null);
     } catch (error) {
       toast.error('Failed to delete patient record');
+    }
+  };
+
+  const handleEndServices = async (reason: PatientEndReason, notes: string) => {
+    if (!endServicesPatient) return;
+
+    const endOption = END_OPTIONS.find(o => o.value === reason);
+    const status = endOption?.status || 'Discharged';
+
+    try {
+      const updateData: Partial<Patient> = {
+        status,
+        end_reason: reason,
+        end_date: new Date().toISOString().split('T')[0],
+        end_notes: notes || undefined,
+      };
+
+      const updatedPatient = await dataService.updatePatient(endServicesPatient.id, updateData);
+      setPatients(patients.map(p => p.id === endServicesPatient.id ? updatedPatient : p));
+
+      const reasonLabels: Record<string, string> = {
+        recovered: 'Recovered',
+        deceased: 'Deceased',
+        contract_cancelled: 'Contract Cancelled',
+        dissatisfied: 'Dissatisfied',
+      };
+
+      toast.success(`Services ended — ${reasonLabels[reason || ''] || 'Unknown'}`);
+      setEndServicesPatient(null);
+    } catch (error) {
+      console.error('Error ending services:', error);
+      toast.error('Failed to end services. Please try again.');
     }
   };
 
@@ -860,7 +1389,14 @@ export const PatientModule = () => {
             <Download size={18} />
             Export
           </button>
-          <button 
+          <button
+            onClick={() => setIsWhatsAppOnboardingOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20 hover:scale-105 transition-all"
+          >
+            <MessageSquare size={18} />
+            WhatsApp
+          </button>
+          <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 px-6 py-2.5 bg-sky-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-sky-100 hover:scale-105 transition-all"
           >
@@ -880,21 +1416,24 @@ export const PatientModule = () => {
         <select 
           value={patientFilters.district}
           onChange={(e) => setPatientFilters({ district: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-sky-500 shadow-sm"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-sky-500 shadow-sm"
         >
           <option value="All">All Districts</option>
           {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
 
-        <select 
+        <select
           value={patientFilters.status}
           onChange={(e) => setPatientFilters({ status: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-sky-500 shadow-sm"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-sky-500 shadow-sm"
         >
           <option value="All">All Status</option>
           <option value="Active">Active</option>
-          <option value="Discharged">Discharged</option>
           <option value="Pending">Pending</option>
+          <option value="Discharged">Discharged (Recovered)</option>
+          <option value="Deceased">Deceased</option>
+          <option value="Cancelled">Contract Cancelled</option>
+          <option value="Dissatisfied">Dissatisfied</option>
         </select>
 
         <button 
@@ -916,16 +1455,24 @@ export const PatientModule = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           >
             {filteredPatients.map(p => (
-              <PatientCard 
-                key={p.id} 
-                patient={p} 
-                staff={staff} 
-                onClick={() => setSelectedPatient(p)} 
+              <PatientCard
+                key={p.id}
+                patient={p}
+                staff={staff}
+                onClick={() => setSelectedPatient(p)}
                 onEdit={() => {
                   setSelectedPatient(p);
                   setIsEditModalOpen(true);
                 }}
                 onUpdate={handleUpdatePatient}
+                onMatch={(patient) => {
+                  setMatchingPatient(patient);
+                  setIsMatchingOpen(true);
+                }}
+                onEndServices={(patient) => {
+                  setEndServicesPatient(patient);
+                  setIsEndServicesOpen(true);
+                }}
               />
             ))}
           </motion.div>
@@ -935,7 +1482,7 @@ export const PatientModule = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden"
+            className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden"
           >
             <table className="w-full text-left border-collapse">
               <thead>
@@ -1034,9 +1581,9 @@ export const PatientModule = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative bg-white dark:bg-slate-900 w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-sky-600 to-indigo-600 text-white">
+              <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-sky-600 to-indigo-600 text-white">
                 <div className="flex items-center gap-6">
                   <div className="w-20 h-20 rounded-[32px] bg-white/20 backdrop-blur-md flex items-center justify-center text-white font-black text-3xl border border-white/30">
                     {selectedPatient.full_name.charAt(0)}
@@ -1078,7 +1625,7 @@ export const PatientModule = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                   {/* Left Column: Patient Info */}
                   <div className="lg:col-span-1 space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <UserRound size={14} />
                         Patient Profile
@@ -1121,7 +1668,7 @@ export const PatientModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <ShieldCheck size={14} />
                         Guardian
@@ -1141,9 +1688,9 @@ export const PatientModule = () => {
 
                   {/* Middle Columns: Medical & Care Plan */}
                   <div className="lg:col-span-2 space-y-8">
-                    <section className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-3">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-3">
                           <div className="p-2 bg-sky-50 text-sky-600 rounded-xl">
                             <Heart size={20} />
                           </div>
@@ -1169,22 +1716,16 @@ export const PatientModule = () => {
                           </div>
                         </div>
                         <div className="p-6 bg-sky-50 rounded-3xl border border-sky-100">
-                          <p className="text-[10px] font-bold text-sky-400 uppercase mb-2">Assigned Staff</p>
-                          {staff.find(s => s.id === selectedPatient.assigned_staff_id) ? (
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center text-white font-bold">
-                                {staff.find(s => s.id === selectedPatient.assigned_staff_id)?.full_name.charAt(0)}
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-sky-900">{staff.find(s => s.id === selectedPatient.assigned_staff_id)?.full_name}</p>
-                                <p className="text-[10px] text-sky-600 font-bold">{staff.find(s => s.id === selectedPatient.assigned_staff_id)?.designation}</p>
-                              </div>
-                            </div>
-                          ) : (
-                            <button className="w-full py-2 bg-white text-sky-600 rounded-xl text-xs font-bold border border-sky-200 hover:bg-sky-100 transition-all">
-                              Assign Now
-                            </button>
-                          )}
+                          <p className="text-[10px] font-bold text-sky-400 uppercase mb-3">Assigned Staff (Today)</p>
+                          <ShiftStaffDisplay
+                            patient={selectedPatient}
+                            allStaff={staff}
+                            refreshKey={shiftAssignRefreshKey}
+                            onAssign={() => {
+                              setShiftAssignPatient(selectedPatient);
+                              setIsShiftAssignOpen(true);
+                            }}
+                          />
                         </div>
                       </div>
 
@@ -1204,7 +1745,7 @@ export const PatientModule = () => {
                           <div className="flex flex-wrap gap-2">
                             {selectedPatient.special_requirements ? (
                               selectedPatient.special_requirements.split(',').map(req => (
-                                <span key={req} className="px-3 py-1 bg-white border border-slate-100 rounded-full text-[10px] font-bold text-slate-600 shadow-sm">
+                                <span key={req} className="px-3 py-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full text-[10px] font-bold text-slate-600 shadow-sm">
                                   {req.trim()}
                                 </span>
                               ))
@@ -1216,8 +1757,8 @@ export const PatientModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm">
-                      <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-3">
+                    <section className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
                         <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
                           <History size={20} />
                         </div>
@@ -1244,7 +1785,7 @@ export const PatientModule = () => {
 
                   {/* Right Column: Billing & Documents */}
                   <div className="lg:col-span-1 space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <CreditCard size={14} />
                         Billing & Package
@@ -1265,13 +1806,25 @@ export const PatientModule = () => {
                             <span className="text-emerald-600">Mar 02, 2024</span>
                           </div>
                         </div>
-                        <button className="w-full py-3 bg-slate-900 text-white rounded-2xl text-xs font-bold hover:bg-slate-800 transition-all">
-                          Generate Invoice
+                        <button
+                          onClick={() => {
+                            setAdvancePatient(selectedPatient);
+                            setAdvanceAmount('');
+                            setAdvanceMethod('Cash');
+                            setAdvanceReason('');
+                            setAdvanceNotes('');
+                            setAdvanceDate(new Date().toISOString().split('T')[0]);
+                            setIsAdvanceModalOpen(true);
+                          }}
+                          className="w-full py-3 bg-red-600 text-white rounded-2xl text-xs font-bold hover:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-100 dark:shadow-red-900/20"
+                        >
+                          <ReceiptText size={16} />
+                          Record Advance & Generate Invoice
                         </button>
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Sparkles size={14} className="text-sky-500" />
                         AI Medical Assistant
@@ -1289,7 +1842,7 @@ export const PatientModule = () => {
                         </div>
 
                         {isAnalyzing && (
-                          <div className="flex items-center gap-3 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
                             <Loader2 size={16} className="animate-spin text-sky-600" />
                             <span className="text-[10px] font-bold text-slate-500 uppercase">Gemini is analyzing...</span>
                           </div>
@@ -1299,7 +1852,7 @@ export const PatientModule = () => {
                           <motion.div 
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm max-h-[300px] overflow-y-auto custom-scrollbar"
+                            className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm max-h-[300px] overflow-y-auto custom-scrollbar"
                           >
                             <div className="prose prose-sm max-w-none prose-slate">
                               <ReactMarkdown>{analysisResult}</ReactMarkdown>
@@ -1328,6 +1881,266 @@ export const PatientModule = () => {
         confirmText="Delete Record"
         type="danger"
       />
+
+      {/* Staff Matching Modal */}
+      {matchingPatient && (
+        <StaffMatchingModal
+          isOpen={isMatchingOpen}
+          onClose={() => {
+            setIsMatchingOpen(false);
+            setMatchingPatient(null);
+          }}
+          patient={matchingPatient}
+          allStaff={staff}
+          onAssign={(staffId) => {
+            if (matchingPatient) {
+              handleUpdatePatient({ assigned_staff_id: staffId });
+            }
+          }}
+        />
+      )}
+
+      {/* Shift Assignment Modal (for "Assign Now" button) */}
+      {shiftAssignPatient && (
+        <ShiftAssignmentModal
+          isOpen={isShiftAssignOpen}
+          onClose={() => {
+            setIsShiftAssignOpen(false);
+            setShiftAssignPatient(null);
+          }}
+          patient={shiftAssignPatient}
+          allStaff={staff}
+          onAssigned={() => {
+            // Refresh patient list and shift staff display
+            refetch();
+            setShiftAssignRefreshKey(k => k + 1);
+          }}
+        />
+      )}
+
+      {/* End Services Modal */}
+      {endServicesPatient && (
+        <EndServicesModal
+          isOpen={isEndServicesOpen}
+          onClose={() => {
+            setIsEndServicesOpen(false);
+            setEndServicesPatient(null);
+          }}
+          patient={endServicesPatient}
+          onEnd={handleEndServices}
+        />
+      )}
+
+      {/* WhatsApp Onboarding Modal */}
+      <WhatsAppOnboardingModal
+        isOpen={isWhatsAppOnboardingOpen}
+        onClose={() => setIsWhatsAppOnboardingOpen(false)}
+        onPatientCreated={(patient) => {
+          setPatients([patient, ...patients]);
+          setIsWhatsAppOnboardingOpen(false);
+        }}
+      />
+
+      {/* Patient Advance & Invoice Modal */}
+      <AnimatePresence>
+        {isAdvanceModalOpen && advancePatient && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={() => setIsAdvanceModalOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-white dark:bg-slate-900 px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800 z-10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-red-100 dark:bg-red-900/30 rounded-2xl text-red-600">
+                      <Receipt size={22} />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900 dark:text-white">Record Advance Payment</h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Generate invoice for client advance</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsAdvanceModalOpen(false)}
+                    className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Patient summary card */}
+                <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold text-sm">
+                      {advancePatient.full_name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 dark:text-white text-sm">{advancePatient.full_name}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                        ID: {advancePatient.patient_id_assigned || advancePatient.id.substring(0, 8).toUpperCase()} • {advancePatient.district}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form */}
+              <div className="p-6 space-y-5">
+                {/* Amount */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Advance Amount (PKR) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">Rs.</span>
+                    <input
+                      type="number"
+                      value={advanceAmount}
+                      onChange={(e) => setAdvanceAmount(e.target.value)}
+                      placeholder="25,000"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:text-white"
+                      min="1"
+                      step="1"
+                    />
+                  </div>
+                </div>
+
+                {/* Payment Method */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Payment Method
+                  </label>
+                  <select
+                    value={advanceMethod}
+                    onChange={(e) => setAdvanceMethod(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 dark:text-white"
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="JazzCash">JazzCash</option>
+                    <option value="EasyPaisa">EasyPaisa</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Payment Date
+                  </label>
+                  <input
+                    type="date"
+                    value={advanceDate}
+                    onChange={(e) => setAdvanceDate(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 dark:text-white"
+                  />
+                </div>
+
+                {/* Reason */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Reason for Advance
+                  </label>
+                  <input
+                    type="text"
+                    value={advanceReason}
+                    onChange={(e) => setAdvanceReason(e.target.value)}
+                    placeholder="e.g., Monthly service package"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 dark:text-white"
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                    Notes (Optional)
+                  </label>
+                  <textarea
+                    value={advanceNotes}
+                    onChange={(e) => setAdvanceNotes(e.target.value)}
+                    placeholder="Additional notes..."
+                    rows={2}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 dark:text-white resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 pb-6 flex gap-3">
+                <button
+                  onClick={() => setIsAdvanceModalOpen(false)}
+                  className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!advanceAmount || isGeneratingInvoice}
+                  onClick={async () => {
+                    if (!advancePatient || !advanceAmount) return;
+                    setIsGeneratingInvoice(true);
+                    try {
+                      // 1. Create advance record
+                      const newAdvance = await patientAdvancesService.create({
+                        patient_id: advancePatient.id,
+                        amount: parseFloat(advanceAmount),
+                        advance_date: advanceDate,
+                        payment_method: advanceMethod as PatientAdvance['payment_method'],
+                        reason: advanceReason,
+                        notes: advanceNotes,
+                        status: 'received',
+                        invoice_number: '',
+                        invoice_generated: false,
+                        created_by: 'test-admin@hmsp.local',
+                      });
+
+                      // 2. Generate and download PDF invoice
+                      await generateAdvanceInvoice({
+                        patient: advancePatient,
+                        advance: newAdvance,
+                      });
+
+                      // 3. Mark invoice as generated
+                      await patientAdvancesService.markInvoiceGenerated(newAdvance.id);
+
+                      toast.success(`Invoice ${newAdvance.invoice_number} generated & downloaded`);
+                      setIsAdvanceModalOpen(false);
+                    } catch (error) {
+                      console.error('Advance creation error:', error);
+                      toast.error('Failed to generate invoice. Check console for details.');
+                    } finally {
+                      setIsGeneratingInvoice(false);
+                    }
+                  }}
+                  className="flex-1 py-3 bg-red-600 text-white rounded-2xl text-xs font-bold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 shadow-lg shadow-red-100 dark:shadow-red-900/20"
+                >
+                  {isGeneratingInvoice ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <ReceiptText size={14} />
+                      Save & Download Invoice
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

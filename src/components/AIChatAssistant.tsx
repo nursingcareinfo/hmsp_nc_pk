@@ -146,7 +146,7 @@ export const AIChatAssistant = () => {
                   <Sparkles size={20} />
                 </div>
                 <div>
-                  <h3 className="font-bold">NursingCare AI</h3>
+                  <h3 className="font-bold">H.M.S.P AI</h3>
                   <div className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
                     <span className="text-[10px] font-medium opacity-80 uppercase tracking-wider">Online with Data Parsing</span>

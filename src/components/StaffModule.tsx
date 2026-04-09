@@ -1,19 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Users, 
-  Search, 
-  Plus, 
-  Filter, 
-  Download, 
-  LayoutGrid, 
-  List, 
-  Phone, 
-  MessageSquare, 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Users,
+  UserRound,
+  Search,
+  Plus,
+  Filter,
+  Download,
+  LayoutGrid,
+  List,
+  Phone,
+  MessageSquare,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
   UserPlus,
-  UserRound,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -33,14 +34,19 @@ import {
   ArrowUpDown,
   Camera,
   Sparkles,
-  DollarSign
+  DollarSign,
+  Bed,
+  Home,
+  CalendarDays,
+  TrendingUp,
+  Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
 import { dataService } from '../dataService';
-import { Staff, District, Designation, StaffStatus, StaffCategory } from '../types';
+import { Staff, Patient, District, Designation, StaffStatus, StaffCategory } from '../types';
 import { format } from 'date-fns';
-import { formatPKR, formatPKDate, formatCNIC, formatPKPhone } from '../lib/utils';
+import { formatPKR, formatPKDate, formatCNIC, formatPKPhone, autoFormatCNIC, autoFormatPhone } from '../lib/utils';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useForm } from 'react-hook-form';
@@ -52,6 +58,8 @@ import { Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ConfirmationModal } from './ConfirmationModal';
 import { CameraCapture } from './CameraCapture';
+import { AttendanceCalendarModal } from './AttendanceCalendarModal';
+import { advancesService } from '../services/advancesService';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -135,7 +143,7 @@ const staffSchema = z.object({
   father_husband_name: z.string().optional(),
   date_of_birth: z.string().optional(),
   cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, 'Invalid CNIC format (XXXXX-XXXXXXX-X)'),
-  contact_1: z.string().regex(/^\+92 3\d{2} \d{7}$/, 'Invalid phone format (+92 3XX XXXXXXX)'),
+  contact_1: z.string().regex(/^(\+92\s?3\d{2}\s?\d{7}|03\d{2}-?\d{7}|923\d{9})$/, 'Invalid phone format (+92 3XX XXXXXXX or 03XX-XXXXXXX)'),
   alt_number: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   whatsapp: z.string().optional(),
@@ -190,7 +198,7 @@ const StatusBadge = ({ status }: { status: StaffStatus }) => {
   );
 };
 
-const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void> }) => {
+const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }: { staff: Staff, patients: Patient[], onClick: () => void, onEdit: () => void, onUpdate: (id: string, data: any) => Promise<void>, onAttendance: (staff: Staff) => void }) => {
   const [isQuickEditing, setIsQuickEditing] = useState(false);
   const [editBuffer, setEditBuffer] = useState({
     full_name: staff.full_name,
@@ -204,8 +212,9 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
     editBuffer.status !== staff.status || 
     editBuffer.shift_rate !== staff.shift_rate;
 
-  const handleSave = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleSave = async (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) e.stopPropagation();
+    if (!hasChanges) return;
     setIsSaving(true);
     try {
       await onUpdate(staff.id, editBuffer);
@@ -218,8 +227,18 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && hasChanges) {
+      e.preventDefault();
+      handleSave();
+    }
+    if (e.key === 'Escape') {
+      setIsQuickEditing(false);
+    }
+  };
+
   return (
-    <motion.div 
+    <motion.div
       layout
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -230,6 +249,19 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
         isQuickEditing ? "border-teal-500 ring-2 ring-teal-500/10" : "border-slate-100 dark:border-slate-800 hover:shadow-xl cursor-pointer group"
       )}
     >
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (isQuickEditing) handleSave(); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && isQuickEditing) {
+            e.preventDefault();
+            setIsQuickEditing(false);
+          }
+        }}
+        className="block"
+        onClick={(e) => {
+          if (isQuickEditing) e.stopPropagation();
+        }}
+      >
       <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
         <button 
           onClick={(e) => { e.stopPropagation(); setIsQuickEditing(!isQuickEditing); }}
@@ -258,7 +290,7 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
         </div>
         <div className="flex-1">
           {isQuickEditing ? (
-            <input 
+            <input
               autoFocus
               value={editBuffer.full_name}
               onChange={(e) => setEditBuffer(prev => ({ ...prev, full_name: e.target.value }))}
@@ -291,7 +323,7 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
               </select>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Rs.</span>
-                <input 
+                <input
                   type="number"
                   value={editBuffer.shift_rate}
                   onChange={(e) => setEditBuffer(prev => ({ ...prev, shift_rate: Number(e.target.value) }))}
@@ -337,23 +369,63 @@ const StaffCard = ({ staff, onClick, onEdit, onUpdate }: { staff: Staff, onClick
       </AnimatePresence>
 
       {!isQuickEditing && (
-        <div className="grid grid-cols-2 gap-3">
-          <button 
+        <>
+          {/* Assigned Patient Info */}
+          {(() => {
+            const assignedPatient = patients?.find(p => p.assigned_staff_id === staff.id);
+            if (assignedPatient) {
+              return (
+                <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-100 dark:border-rose-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Bed size={12} className="text-rose-500" />
+                    <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider">Assigned Patient</span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">{assignedPatient.full_name}</p>
+                  <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    <Home size={10} />
+                    {assignedPatient.address}
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                    <MapPin size={10} />
+                    {assignedPatient.district}
+                  </div>
+                  <span className="inline-block mt-2 px-2 py-0.5 bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-md text-[9px] font-black uppercase tracking-tighter">
+                    {assignedPatient.service_type}
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+          <div className="grid grid-cols-2 gap-3">
+          <button
             onClick={(e) => { e.stopPropagation(); window.open(`tel:${staff.contact_1}`); }}
             className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-teal-50 hover:text-teal-600 transition-all"
           >
             <Phone size={14} />
             Call
           </button>
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${staff.contact_1.replace(/\s+/g, '')}`); }}
             className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all"
           >
             <MessageSquare size={14} />
             WhatsApp
           </button>
-        </div>
+          </div>
+
+          {/* Attendance Button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onAttendance(staff); }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 rounded-xl text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-all border border-teal-100 dark:border-teal-800"
+          >
+            <CalendarDays size={14} />
+            Attendance & Shifts
+          </button>
+        </>
       )}
+      </form>
     </motion.div>
   );
 };
@@ -467,9 +539,9 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
       >
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-teal-600 text-white">
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-teal-600 text-white">
           <div>
             <h2 className="text-2xl font-black tracking-tight">{initialData ? 'Edit Staff Profile' : 'New Staff Registration'}</h2>
             <p className="text-teal-100 text-sm font-medium">Step {step} of 3: {step === 1 ? 'Personal Info' : step === 2 ? 'Professional Details' : 'Employment Terms'}</p>
@@ -495,7 +567,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   <button 
                     type="button"
                     onClick={() => { setCameraType('form'); setIsBatchMode(false); setSkipAI(false); setIsCameraOpen(true); }}
-                    className="flex-1 flex flex-col items-center justify-center p-4 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl hover:bg-slate-100 transition-all group"
+                    className="flex-1 flex flex-col items-center justify-center p-4 bg-slate-50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl hover:bg-slate-100 transition-all group"
                   >
                     <FileText size={24} className="text-slate-600 mb-2 group-hover:scale-110 transition-transform" />
                     <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Scan Form</span>
@@ -539,7 +611,12 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">CNIC Number *</label>
-                    <input {...register('cnic')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.cnic && "ring-2 ring-rose-500 bg-rose-50")} placeholder="XXXXX-XXXXXXX-X" />
+                    <input
+                      {...register('cnic')}
+                      onChange={(e) => setValue('cnic', autoFormatCNIC(e.target.value))}
+                      className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.cnic && "ring-2 ring-rose-500 bg-rose-50")}
+                      placeholder="XXXXX-XXXXXXX-X"
+                    />
                     {errors.cnic && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.cnic.message as string}</p>}
                   </div>
                   <div className="space-y-2">
@@ -555,12 +632,21 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mobile Number *</label>
-                    <input {...register('contact_1')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.contact_1 && "ring-2 ring-rose-500 bg-rose-50")} placeholder="+92 3XX XXXXXXX" />
+                    <input
+                      {...register('contact_1')}
+                      onChange={(e) => setValue('contact_1', autoFormatPhone(e.target.value))}
+                      className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500", errors.contact_1 && "ring-2 ring-rose-500 bg-rose-50")}
+                      placeholder="03XX-XXXXXXX"
+                    />
                     {errors.contact_1 && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider px-2">{errors.contact_1.message as string}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">WhatsApp</label>
-                    <input {...register('whatsapp')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" />
+                    <input
+                      {...register('whatsapp')}
+                      onChange={(e) => setValue('whatsapp', autoFormatPhone(e.target.value))}
+                      className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500"
+                    />
                   </div>
                 </div>
 
@@ -698,7 +784,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   </div>
                 </div>
 
-                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
                   <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                     <ShieldCheck size={14} />
                     Emergency Contact
@@ -706,21 +792,21 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Name</label>
-                      <input {...register('emergency_contact_name')} className="w-full bg-white border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
+                      <input {...register('emergency_contact_name')} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Relationship</label>
-                      <input {...register('emergency_contact_relationship')} className="w-full bg-white border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
+                      <input {...register('emergency_contact_relationship')} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Phone</label>
-                      <input {...register('emergency_contact_phone')} className="w-full bg-white border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
+                      <input {...register('emergency_contact_phone')} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Alt Phone</label>
-                      <input {...register('emergency_contact_alt_phone')} className="w-full bg-white border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
+                      <input {...register('emergency_contact_alt_phone')} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
                     </div>
                   </div>
                 </div>
@@ -747,7 +833,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
           </form>
         </div>
 
-        <div className="p-8 border-t border-slate-100 flex justify-between bg-slate-50">
+        <div className="p-8 border-t border-slate-100 dark:border-slate-800 flex justify-between bg-slate-50">
           <button 
             type="button"
             onClick={() => step > 1 ? setStep(step - 1) : onClose()}
@@ -807,10 +893,10 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
 
 export const StaffModule = () => {
   const { searchQuery, staffFilters, setStaffFilters } = useUIStore();
+  const queryClient = useQueryClient();
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'salary'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [staff, setStaff] = useState<Staff[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
@@ -822,6 +908,10 @@ export const StaffModule = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
+
+  // Attendance calendar state
+  const [showAttendanceCalendar, setShowAttendanceCalendar] = useState(false);
+  const [attendanceStaff, setAttendanceStaff] = useState<Staff | null>(null);
 
   React.useEffect(() => {
     setAnalysisResult(null);
@@ -849,9 +939,23 @@ export const StaffModule = () => {
     }
   };
 
-  React.useEffect(() => {
-    dataService.getStaff().then(setStaff);
-  }, []);
+  // Use React Query for cached, deduplicated staff data
+  const { data: queryStaff = [], isLoading: isQueryLoading } = useQuery({
+    queryKey: ['staff'],
+    queryFn: dataService.getStaff,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fetch patients to show assigned patient info on staff cards
+  const { data: queryPatients = [] } = useQuery({
+    queryKey: ['patients'],
+    queryFn: dataService.getPatients,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Use query data directly — no local state copy, no sync useEffect
+  const staff = queryStaff;
+  const isLoading = isQueryLoading;
 
   const filteredStaff = useMemo(() => {
     return staff.filter(s => {
@@ -887,11 +991,11 @@ export const StaffModule = () => {
 
   const handleAddStaff = async (data: any) => {
     try {
-      const newStaff = await dataService.addStaff({
+      await dataService.addStaff({
         ...data,
         status: 'Active',
       });
-      setStaff([newStaff, ...staff]);
+      await queryClient.invalidateQueries({ queryKey: ['staff'] });
       toast.success('Staff member registered successfully!');
       setIsAddModalOpen(false);
     } catch (error) {
@@ -903,9 +1007,10 @@ export const StaffModule = () => {
   const handleUpdateStaff = async (data: any) => {
     if (!selectedStaff) return;
     try {
-      const updatedStaff = await dataService.updateStaff(selectedStaff.id, data);
-      setStaff(staff.map(s => s.id === selectedStaff.id ? updatedStaff : s));
-      setSelectedStaff(updatedStaff);
+      await dataService.updateStaff(selectedStaff.id, data);
+      await queryClient.invalidateQueries({ queryKey: ['staff'] });
+      // Update selectedStaff to reflect changes in open modal
+      setSelectedStaff({ ...selectedStaff, ...data });
       setIsEditModalOpen(false);
       toast.success('Staff profile updated successfully!');
     } catch (error) {
@@ -918,8 +1023,25 @@ export const StaffModule = () => {
     if (!selectedStaff || advanceForm.amount <= 0) return;
 
     try {
+      // Record advance in the advances database table
+      const advanceRecord = await advancesService.create({
+        staff_id: selectedStaff.id,
+        staff_name: selectedStaff.full_name,
+        staff_assigned_id: selectedStaff.assigned_id,
+        staff_designation: selectedStaff.designation,
+        staff_district: selectedStaff.official_district,
+        staff_salary: selectedStaff.salary,
+        amount: advanceForm.amount,
+        advance_date: advanceForm.date,
+        reason: advanceForm.reason,
+        payment_method: 'Cash',
+        status: 'Approved',
+        deducted_from_salary: 0,
+      });
+
+      // Also update staff.advances array for backward compatibility
       const newAdvance = {
-        id: Math.random().toString(36).substring(7),
+        id: advanceRecord.id,
         staff_id: selectedStaff.id,
         amount: advanceForm.amount,
         date: advanceForm.date,
@@ -928,13 +1050,13 @@ export const StaffModule = () => {
       };
 
       const updatedAdvances = [...(selectedStaff.advances || []), newAdvance];
-      const updated = await dataService.updateStaff(selectedStaff.id, { advances: updatedAdvances });
-      
-      setStaff(prev => prev.map(s => s.id === updated.id ? updated : s));
-      setSelectedStaff(updated);
+      await dataService.updateStaff(selectedStaff.id, { advances: updatedAdvances });
+      await queryClient.invalidateQueries({ queryKey: ['staff'] });
+
+      setSelectedStaff({ ...selectedStaff, advances: updatedAdvances });
       setIsAddingAdvance(false);
       setAdvanceForm({ amount: 0, reason: '', date: format(new Date(), 'yyyy-MM-dd') });
-      toast.success('Advance payment recorded successfully');
+      toast.success(`Advance Rs ${advanceForm.amount.toLocaleString()} recorded for ${selectedStaff.full_name}`);
     } catch (error) {
       toast.error('Failed to record advance payment');
     }
@@ -942,10 +1064,10 @@ export const StaffModule = () => {
 
   const handleDeleteStaff = async () => {
     if (!staffToDelete) return;
-    
+
     try {
       await dataService.deleteStaff(staffToDelete.id);
-      setStaff(staff.filter(s => s.id !== staffToDelete.id));
+      await queryClient.invalidateQueries({ queryKey: ['staff'] });
       toast.success('Staff record deleted successfully');
       setStaffToDelete(null);
       setSelectedStaff(null);
@@ -1001,7 +1123,7 @@ export const StaffModule = () => {
         <select 
           value={staffFilters.category}
           onChange={(e) => setStaffFilters({ category: e.target.value as any, designation: 'All' })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm outline-none"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm outline-none"
         >
           <option value="All">All Categories</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1010,7 +1132,7 @@ export const StaffModule = () => {
         <select 
           value={staffFilters.designation}
           onChange={(e) => setStaffFilters({ designation: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm outline-none"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm outline-none"
         >
           <option value="All">All Designations</option>
           {staffFilters.category === 'All' 
@@ -1022,7 +1144,7 @@ export const StaffModule = () => {
         <select 
           value={staffFilters.district}
           onChange={(e) => setStaffFilters({ district: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
         >
           <option value="All">All Districts</option>
           {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -1031,7 +1153,7 @@ export const StaffModule = () => {
         <select 
           value={staffFilters.status}
           onChange={(e) => setStaffFilters({ status: e.target.value as any })}
-          className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
+          className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
         >
           <option value="All">All Status</option>
           <option value="Active">Active</option>
@@ -1045,7 +1167,7 @@ export const StaffModule = () => {
           <select 
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-white border-slate-100 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
+            className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs font-bold text-slate-600 focus:ring-teal-500 shadow-sm"
           >
             <option value="name">Sort by Name</option>
             <option value="date">Sort by Date</option>
@@ -1053,7 +1175,7 @@ export const StaffModule = () => {
           </select>
           <button 
             onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-            className="p-2 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-teal-600 transition-all shadow-sm"
+            className="p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl text-slate-400 hover:text-teal-600 transition-all shadow-sm"
           >
             <ArrowUpDown size={16} className={cn(sortOrder === 'desc' && "rotate-180 transition-transform")} />
           </button>
@@ -1078,15 +1200,29 @@ export const StaffModule = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           >
             {paginatedStaff.map(s => (
-              <StaffCard 
-                key={s.id} 
-                staff={s} 
-                onClick={() => setSelectedStaff(s)} 
+              <StaffCard
+                key={s.id}
+                staff={s}
+                patients={queryPatients}
+                onClick={() => setSelectedStaff(s)}
                 onEdit={() => {
                   setSelectedStaff(s);
                   setIsEditModalOpen(true);
                 }}
-                onUpdate={handleUpdateStaff}
+                onUpdate={async (id, data) => {
+                  try {
+                    await dataService.updateStaff(id, data);
+                    await queryClient.invalidateQueries({ queryKey: ['staff'] });
+                    toast.success('Staff updated successfully');
+                  } catch (error) {
+                    console.error('Error updating staff:', error);
+                    toast.error('Failed to update staff');
+                  }
+                }}
+                onAttendance={(staffMember) => {
+                  setAttendanceStaff(staffMember);
+                  setShowAttendanceCalendar(true);
+                }}
               />
             ))}
           </motion.div>
@@ -1096,7 +1232,7 @@ export const StaffModule = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden"
+            className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden"
           >
             <table className="w-full text-left border-collapse">
               <thead>
@@ -1183,7 +1319,7 @@ export const StaffModule = () => {
           <button 
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="p-2 rounded-xl bg-white border border-slate-100 text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-all"
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-all"
           >
             <ChevronLeft size={20} />
           </button>
@@ -1208,7 +1344,7 @@ export const StaffModule = () => {
                     "w-10 h-10 rounded-xl text-sm font-bold transition-all",
                     currentPage === pageNum 
                       ? "bg-teal-600 text-white shadow-lg shadow-teal-100" 
-                      : "bg-white border border-slate-100 text-slate-500 hover:bg-slate-50"
+                      : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-500 hover:bg-slate-50"
                   )}
                 >
                   {pageNum}
@@ -1219,7 +1355,7 @@ export const StaffModule = () => {
           <button 
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
-            className="p-2 rounded-xl bg-white border border-slate-100 text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-all"
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-all"
           >
             <ChevronRight size={20} />
           </button>
@@ -1258,9 +1394,9 @@ export const StaffModule = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative bg-white dark:bg-slate-900 w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-teal-600 to-sky-600 text-white">
+              <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-teal-600 to-sky-600 text-white">
                 <div className="flex items-center gap-6">
                   <div className="w-20 h-20 rounded-[32px] bg-white/20 backdrop-blur-md flex items-center justify-center text-white font-black text-3xl border border-white/30">
                     {selectedStaff.full_name.charAt(0)}
@@ -1303,7 +1439,7 @@ export const StaffModule = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {/* Left Column: Personal & Contact */}
                   <div className="space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <UserRound size={14} />
                         Personal Information
@@ -1336,7 +1472,7 @@ export const StaffModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <PhoneCall size={14} />
                         Contact Details
@@ -1374,7 +1510,7 @@ export const StaffModule = () => {
 
                   {/* Middle Column: Professional */}
                   <div className="space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Briefcase size={14} />
                         Professional Profile
@@ -1390,7 +1526,7 @@ export const StaffModule = () => {
                         </div>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Relevant Experience</p>
-                          <p className="text-sm font-bold text-slate-900 italic">
+                          <p className="text-sm font-bold text-slate-900 dark:text-slate-100 italic">
                             {selectedStaff.relevant_experience || <span className="text-rose-500 italic font-bold">Missing Info</span>}
                           </p>
                         </div>
@@ -1403,7 +1539,7 @@ export const StaffModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <CreditCard size={14} />
                         Employment & Payment
@@ -1443,7 +1579,7 @@ export const StaffModule = () => {
 
                   {/* Right Column: Documents & Status */}
                   <div className="space-y-8">
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <FileText size={14} />
                         Documents
@@ -1452,7 +1588,7 @@ export const StaffModule = () => {
                         {['CNIC Copy', 'PNC License', 'Degree Certificate'].map(doc => (
                           <div key={doc} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl group cursor-pointer hover:bg-teal-50 transition-colors">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 bg-white rounded-xl text-slate-400 group-hover:text-teal-600 shadow-sm">
+                              <div className="p-2 bg-white dark:bg-slate-900 rounded-xl text-slate-400 group-hover:text-teal-600 shadow-sm">
                                 <FileText size={16} />
                               </div>
                               <span className="text-xs font-bold text-slate-600 group-hover:text-teal-900">{doc}</span>
@@ -1463,7 +1599,7 @@ export const StaffModule = () => {
                       </div>
                     </section>
 
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Sparkles size={14} className="text-teal-500" />
                         AI Document Verification
@@ -1481,7 +1617,7 @@ export const StaffModule = () => {
                         </div>
 
                         {isAnalyzing && (
-                          <div className="flex items-center gap-3 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
                             <Loader2 size={16} className="animate-spin text-teal-600" />
                             <span className="text-[10px] font-bold text-slate-500 uppercase">Gemini is verifying...</span>
                           </div>
@@ -1491,7 +1627,7 @@ export const StaffModule = () => {
                           <motion.div 
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm max-h-[300px] overflow-y-auto custom-scrollbar"
+                            className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm max-h-[300px] overflow-y-auto custom-scrollbar"
                           >
                             <div className="prose prose-sm max-w-none prose-slate">
                               <ReactMarkdown>{analysisResult}</ReactMarkdown>
@@ -1501,7 +1637,7 @@ export const StaffModule = () => {
                       </div>
                     </section>
                     {/* Advances Section */}
-                    <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                    <section className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                           <DollarSign size={14} />
@@ -1519,7 +1655,7 @@ export const StaffModule = () => {
                         <motion.div 
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="mb-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3"
+                          className="mb-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3"
                         >
                           <div>
                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Amount (PKR)</label>
@@ -1527,7 +1663,7 @@ export const StaffModule = () => {
                               type="number" 
                               value={advanceForm.amount}
                               onChange={(e) => setAdvanceForm(prev => ({ ...prev, amount: Number(e.target.value) }))}
-                              className="w-full bg-white border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500"
+                              className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:ring-teal-500"
                               placeholder="Enter amount"
                             />
                           </div>
@@ -1537,7 +1673,7 @@ export const StaffModule = () => {
                               type="text" 
                               value={advanceForm.reason}
                               onChange={(e) => setAdvanceForm(prev => ({ ...prev, reason: e.target.value }))}
-                              className="w-full bg-white border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500"
+                              className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:ring-teal-500"
                               placeholder="e.g. Family emergency"
                             />
                           </div>
@@ -1550,7 +1686,7 @@ export const StaffModule = () => {
                             </button>
                             <button 
                               onClick={() => setIsAddingAdvance(false)}
-                              className="flex-1 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-xl"
+                              className="flex-1 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 text-xs font-bold rounded-xl"
                             >
                               Cancel
                             </button>
@@ -1591,7 +1727,7 @@ export const StaffModule = () => {
         )}
       </AnimatePresence>
 
-      <ConfirmationModal 
+      <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => {
           setIsDeleteModalOpen(false);
@@ -1603,6 +1739,18 @@ export const StaffModule = () => {
         confirmText="Delete Record"
         type="danger"
       />
+
+      {/* Attendance Calendar Modal */}
+      {attendanceStaff && (
+        <AttendanceCalendarModal
+          isOpen={showAttendanceCalendar}
+          onClose={() => {
+            setShowAttendanceCalendar(false);
+            setAttendanceStaff(null);
+          }}
+          staff={attendanceStaff}
+        />
+      )}
     </div>
   );
 };

@@ -1,0 +1,63 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/archbtw/dev/whatsapp/hmsp_nc_pk_repo/.qwen/hooks/inject-git-context.sh",
+            "name": "git-context",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "run_shell_command|write_file|edit_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/archbtw/dev/whatsapp/hmsp_nc_pk_repo/.qwen/hooks/security-scan.sh",
+            "name": "security-scan",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "write_file|edit_file",
+        "sequential": true,
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/archbtw/dev/whatsapp/hmsp_nc_pk_repo/.qwen/hooks/auto-typecheck.sh",
+            "name": "auto-typecheck",
+            "timeout": 30000
+          },
+          {
+            "type": "command",
+            "command": "/home/archbtw/dev/whatsapp/hmsp_nc_pk_repo/.qwen/hooks/no-console-log.sh",
+            "name": "no-console-log",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "/home/archbtw/dev/whatsapp/hmsp_nc_pk_repo/.qwen/hooks/component-size-guard.sh",
+            "name": "component-size-guard",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "/home/archbtw/dev/whatsapp/hmsp_nc_pk_repo/.qwen/hooks/build-check.sh",
+            "name": "build-check",
+            "timeout": 60000
+          }
+        ]
+      }
+    ]
+  },
+  "$version": 3
+}

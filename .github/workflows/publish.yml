@@ -1,0 +1,39 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dev:
+        description: 'Publish as dev version'
+        type: boolean
+        default: true
+      dry_run:
+        description: 'Validate without publishing'
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    name: Publish to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Deploy to Vercel
+        if: ${{ !inputs.dry_run }}
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: ${{ inputs.dev && '--preview' || '--prod' }}
+          working-directory: ./
+      - name: Dry run - build only
+        if: ${{ inputs.dry_run }}
+        run: echo "✅ Build passed validation (dry run)"

@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { auth } from '../../firebase';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendEmailVerification } from 'firebase/auth';
+import { supabase } from '../../lib/supabase';
 import { Logo } from '../Logo';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Loader2, User, Lock, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// Append this domain to username for Supabase email auth
+const AUTH_DOMAIN = '@hmsp.local';
 
 interface SignUpProps {
   theme: 'light' | 'dark';
@@ -18,7 +20,7 @@ interface SignUpProps {
 }
 
 export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,42 +32,57 @@ export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }
     setError(null);
     setSuccessMessage(null);
 
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      toast.error('Password must be at least 6 characters');
+      setIsLoading(false);
+      return;
+    }
+
+    // Convert username to email for Supabase auth
+    const email = username.toLowerCase().trim() + AUTH_DOMAIN;
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      if (userCredential.user) {
-        await sendEmailVerification(userCredential.user);
-        const msg = 'Account created! Please check your email and confirm your account before logging in.';
-        setSuccessMessage(msg);
-        toast.success(msg);
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (data?.user) {
+        if (!data.session) {
+          const msg = 'Account created! Sign in with your username to continue.';
+          setSuccessMessage(msg);
+          toast.success(msg);
+        } else if (data.user.identities?.length === 0) {
+          const msg = 'An account with this username already exists. Please sign in instead.';
+          setError(msg);
+          toast.error(msg);
+        } else {
+          const msg = 'Account created! Signing you in...';
+          setSuccessMessage(msg);
+          toast.success(msg);
+          onSuccess();
+        }
       }
     } catch (err: any) {
       console.error('Sign up error:', err);
       let msg = 'Failed to sign up';
-      if (err.code === 'auth/email-already-in-use') {
-        msg = 'Email already in use. Please sign in instead.';
-      } else if (err.code === 'auth/weak-password') {
+      if (err.message?.includes('User already registered')) {
+        msg = 'Username already in use. Please sign in instead.';
+      } else if (err.message?.includes('Password should be at least')) {
         msg = 'Password is too weak. Please use at least 6 characters.';
+      } else {
+        msg = err.message || msg;
       }
       setError(msg);
       toast.error(msg);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      if (result.user) {
-        toast.success('Signed up with Google!');
-        onSuccess();
-      }
-    } catch (err: any) {
-      console.error('Google login error:', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        toast.error(err.message || 'Failed to sign up with Google');
-      }
     }
   };
 
@@ -81,47 +98,33 @@ export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }
         </p>
       </div>
 
-      <div className="space-y-4">
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white font-bold rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-3 group"
-        >
-          <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          Sign up with Google
-        </button>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white dark:bg-slate-900 px-2 text-slate-500 font-bold">Or continue with email</span>
-          </div>
-        </div>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-4">
+          {/* Username field */}
           <div className="relative group">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={20} />
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={20} />
             <input
-              type="email"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
+              autoComplete="username"
               className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all dark:text-white"
             />
           </div>
 
+          {/* Password field */}
           <div className="relative group">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={20} />
             <input
               type="password"
-              placeholder="Password"
+              placeholder="Password (min. 6 characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={6}
+              autoComplete="new-password"
               className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all dark:text-white"
             />
           </div>
@@ -142,7 +145,7 @@ export const SignUp: React.FC<SignUpProps> = ({ theme, onSuccess, onToggleView }
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-4 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-bold rounded-2xl shadow-lg shadow-teal-600/20 hover:shadow-xl hover:shadow-teal-600/30 transition-all flex items-center justify-center gap-2 group"
+          className="w-full py-4 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-bold rounded-2xl shadow-lg shadow-teal-600/20 hover:shadow-xl hover:shadow-teal-600/30 transition-all flex items-center justify-center gap-2 group disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <Loader2 className="animate-spin" size={20} />

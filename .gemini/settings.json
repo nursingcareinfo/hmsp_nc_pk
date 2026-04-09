@@ -1,0 +1,83 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "name": "git-context",
+            "type": "command",
+            "command": ".gemini/hooks/inject-git-context.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "keyword-detector",
+            "type": "command",
+            "command": ".gemini/hooks/keyword-detector.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "BeforeTool": [
+      {
+        "matcher": "write_file|edit_file|run_shell_command",
+        "sequential": false,
+        "hooks": [
+          {
+            "name": "security-scan",
+            "type": "command",
+            "command": ".gemini/hooks/security-scan.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "write_file|edit_file",
+        "hooks": [
+          {
+            "name": "auto-typecheck",
+            "type": "command",
+            "command": ".gemini/hooks/auto-typecheck.sh",
+            "timeout": 30000
+          }
+        ]
+      }
+    ],
+    "BeforeTool:run_shell_command": [
+      {
+        "matcher": "git commit",
+        "hooks": [
+          {
+            "name": "validate-commit",
+            "type": "command",
+            "command": ".gemini/hooks/validate-commit.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "exit",
+        "hooks": [
+          {
+            "name": "session-end",
+            "type": "command",
+            "command": ".gemini/hooks/session-end.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

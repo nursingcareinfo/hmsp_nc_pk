@@ -1,1 +1,46 @@
 @import "tailwindcss";
+
+/* ============================================================
+   GLOBAL FORM INPUT STYLES — Dark mode text visibility fix
+   ============================================================
+   Problem: Many inputs use bg-slate-50 without dark: variant,
+   combined with white text in dark mode = invisible text.
+   
+   Solution: Force readable text color and dark background on
+   ALL form inputs when .dark is active, regardless of utility
+   classes on the element.
+   ============================================================ */
+
+/* Default (light mode) */
+@layer base {
+  input, textarea, select {
+    @apply bg-slate-100 text-slate-900 placeholder:text-slate-400;
+  }
+}
+
+/* Dark mode — overrides ALL input backgrounds and text colors */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #1e293b !important;  /* slate-800 */
+  color: #f8fafc !important;             /* slate-50 (bright white) */
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder,
+.dark select::placeholder {
+  color: #64748b !important;             /* slate-500 */
+}
+
+/* Fix for select dropdown options in dark mode */
+.dark select option {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
+/* Error state inputs: preserve red tint but keep text readable */
+.dark input[style*="ring-rose"],
+.dark .ring-rose-500,
+input[class*="ring-rose-500"] {
+  /* Let the ring show through */
+}

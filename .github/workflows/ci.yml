@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feature/*]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dist
+          path: dist/
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for hardcoded secrets
+        run: |
+          # Check for actual secret VALUES (not just env var names in docs)
+          # Block JWT tokens (eyJhbGci), AWS keys (AKIA...), GitHub tokens (ghp_...), API keys (sk-...)
+          SECRETS_FOUND=""
+          SECRETS_FOUND+=$(grep -rn "eyJhbGci" src/ --include="*.ts" --include="*.tsx" | grep -v "process.env" | grep -v "\.env" | grep -v "startsWith" || true)
+          SECRETS_FOUND+=$(grep -rn "sk-[A-Za-z0-9_-]\{20,\}" src/ --include="*.ts" --include="*.tsx" | grep -v "process.env" | grep -v "\.env" || true)
+          SECRETS_FOUND+=$(grep -rn "AKIA[0-9A-Z]\{12,\}" src/ --include="*.ts" --include="*.tsx" | grep -v "process.env" | grep -v "\.env" || true)
+          SECRETS_FOUND+=$(grep -rn "ghp_[A-Za-z0-9]\{20,\}" src/ --include="*.ts" --include="*.tsx" | grep -v "process.env" | grep -v "\.env" || true)
+          
+          if [ -n "$SECRETS_FOUND" ]; then
+            echo "❌ Hardcoded secrets found in source code:"
+            echo "$SECRETS_FOUND"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"
+      - name: Check for console.log in production code
+        run: |
+          # Allow console.log in config/debug files, block in business logic
+          CONSOLE_LOGS=$(grep -rn "console\.log" src/ --include="*.ts" --include="*.tsx" | grep -v "test" | grep -v "supabase.ts" | grep -v "config" || true)
+          if [ -n "$CONSOLE_LOGS" ]; then
+            echo "⚠️  console.log statements found in business logic:"
+            echo "$CONSOLE_LOGS"
+            echo "Remove or replace with proper logging (Sonner toasts)."
+            exit 1
+          fi
+          echo "✅ No console.log in business logic (debug logs in config files allowed)"
