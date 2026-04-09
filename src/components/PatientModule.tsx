@@ -62,6 +62,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
+import { dutyService } from '../services/dutyService';
 import { geminiService } from '../services/geminiService';
 import { Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -173,11 +174,13 @@ const ShiftStaffDisplay = ({
   patient,
   allStaff,
   onAssign,
+  onUnassign,
   refreshKey = 0,
 }: {
   patient: Patient;
   allStaff: Staff[];
   onAssign: () => void;
+  onUnassign?: (staffId: string, staffName: string, shiftType: 'day' | 'night') => void;
   refreshKey?: number;
 }) => {
   const [dayStaff, setDayStaff] = useState<Staff[]>([]);
@@ -224,8 +227,17 @@ const ShiftStaffDisplay = ({
         {dayStaff.length > 0 ? (
           <div className="flex flex-wrap gap-1.5 flex-1">
             {dayStaff.map(s => (
-              <span key={s.id} className="px-2 py-1 bg-white rounded-lg text-[10px] font-bold text-sky-700 border border-sky-100">
+              <span key={s.id} className="inline-flex items-center gap-0.5 px-2 py-1 bg-white rounded-lg text-[10px] font-bold text-sky-700 border border-sky-100">
                 {s.full_name}
+                {onUnassign && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onUnassign(s.id, s.full_name, 'day'); }}
+                    className="ml-0.5 p-0.5 hover:bg-sky-100 rounded text-slate-400 hover:text-rose-500 transition-colors"
+                    title={`Remove ${s.full_name} from Day shift`}
+                  >
+                    <X size={10} />
+                  </button>
+                )}
               </span>
             ))}
             {dayStaff.length < 2 && (
@@ -249,8 +261,17 @@ const ShiftStaffDisplay = ({
         {nightStaff.length > 0 ? (
           <div className="flex flex-wrap gap-1.5 flex-1">
             {nightStaff.map(s => (
-              <span key={s.id} className="px-2 py-1 bg-white rounded-lg text-[10px] font-bold text-indigo-700 border border-indigo-100">
+              <span key={s.id} className="inline-flex items-center gap-0.5 px-2 py-1 bg-white rounded-lg text-[10px] font-bold text-indigo-700 border border-indigo-100">
                 {s.full_name}
+                {onUnassign && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onUnassign(s.id, s.full_name, 'night'); }}
+                    className="ml-0.5 p-0.5 hover:bg-indigo-100 rounded text-slate-400 hover:text-rose-500 transition-colors"
+                    title={`Remove ${s.full_name} from Night shift`}
+                  >
+                    <X size={10} />
+                  </button>
+                )}
               </span>
             ))}
             {nightStaff.length < 2 && (
@@ -1204,6 +1225,19 @@ export const PatientModule = () => {
   const [shiftAssignPatient, setShiftAssignPatient] = useState<Patient | null>(null);
   const [shiftAssignRefreshKey, setShiftAssignRefreshKey] = useState(0);
 
+  // Unassign staff from shift
+  const handleUnassignStaff = async (staffId: string, staffName: string, shiftType: 'day' | 'night') => {
+    const confirmed = window.confirm(`Remove ${staffName} from ${shiftType === 'day' ? 'Day' : 'Night'} shift?`);
+    if (!confirmed) return;
+    try {
+      await dutyService.unassignStaffFromShift(selectedPatient.id, staffId, shiftType);
+      toast.success(`Removed ${staffName} from ${shiftType} shift`);
+      setShiftAssignRefreshKey(k => k + 1);
+    } catch {
+      toast.error('Failed to remove staff from shift');
+    }
+  };
+
   // End services modal state
   const [isEndServicesOpen, setIsEndServicesOpen] = useState(false);
   const [endServicesPatient, setEndServicesPatient] = useState<Patient | null>(null);
@@ -1721,6 +1755,7 @@ export const PatientModule = () => {
                             patient={selectedPatient}
                             allStaff={staff}
                             refreshKey={shiftAssignRefreshKey}
+                            onUnassign={handleUnassignStaff}
                             onAssign={() => {
                               setShiftAssignPatient(selectedPatient);
                               setIsShiftAssignOpen(true);
