@@ -62,6 +62,17 @@ export const dutyService = {
   create: async (assignment: Omit<DutyAssignment, 'id' | 'assigned_at' | 'updated_at'>): Promise<DutyAssignment> => {
     if (!supabase) throw new Error('Supabase not configured');
 
+    // Guard: staff must be Active
+    const { data: staffData } = await supabase
+      .from('staff')
+      .select('id, full_name, status')
+      .eq('id', assignment.staff_id)
+      .single();
+
+    if (staffData && staffData.status !== 'Active') {
+      throw new Error(`Cannot assign ${staffData.full_name}: staff status is '${staffData.status}' (must be Active)`);
+    }
+
     const { data, error } = await supabase
       .from('duty_assignments')
       .insert({
@@ -93,6 +104,19 @@ export const dutyService = {
   // Batch create multiple assignments
   createBatch: async (assignments: Omit<DutyAssignment, 'id' | 'assigned_at' | 'updated_at'>[]): Promise<DutyAssignment[]> => {
     if (!supabase) throw new Error('Supabase not configured');
+
+    // Guard: all staff must be Active
+    const staffIds = [...new Set(assignments.map(a => a.staff_id))];
+    const { data: staffList } = await supabase
+      .from('staff')
+      .select('id, full_name, status')
+      .in('id', staffIds);
+
+    for (const s of staffList || []) {
+      if (s.status !== 'Active') {
+        throw new Error(`Cannot assign ${s.full_name}: staff status is '${s.status}' (must be Active)`);
+      }
+    }
 
     const { data, error } = await supabase
       .from('duty_assignments')
@@ -343,6 +367,11 @@ export const dutyService = {
     assignedBy?: string
   ): Promise<DutyAssignment[]> => {
     if (!supabase) throw new Error('Supabase not configured');
+
+    // Guard: staff must be Active
+    if (staff.status !== 'Active') {
+      throw new Error(`Cannot assign ${staff.full_name}: staff status is '${staff.status}' (must be Active)`);
+    }
 
     const today = new Date().toISOString().split('T')[0];
     const created: DutyAssignment[] = [];
