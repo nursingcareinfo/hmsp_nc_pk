@@ -342,7 +342,7 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                       <span className="text-xs text-sky-400">(7AM-7PM)</span>
                       <div className="flex-1 flex flex-wrap gap-2">
                         {assignedStaff.day.map(staff => (
-                          <div key={staff.id} className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-full text-xs">
+                          <div key={staff.id} className="flex items-center gap-2 px-3 py-1.5 bg-sky-100/70 dark:bg-slate-800 rounded-full text-xs">
                             <span className="font-bold text-slate-900 dark:text-white">{staff.full_name}</span>
                             <button
                               onClick={() => handleUnassign(staff.id, 'day')}
@@ -364,7 +364,7 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                       <span className="text-xs text-indigo-400">(7PM-7AM)</span>
                       <div className="flex-1 flex flex-wrap gap-2">
                         {assignedStaff.night.map(staff => (
-                          <div key={staff.id} className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-full text-xs">
+                          <div key={staff.id} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-100/70 dark:bg-slate-800 rounded-full text-xs">
                             <span className="font-bold text-slate-900 dark:text-white">{staff.full_name}</span>
                             <button
                               onClick={() => handleUnassign(staff.id, 'night')}

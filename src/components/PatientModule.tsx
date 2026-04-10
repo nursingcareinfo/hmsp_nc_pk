@@ -227,12 +227,12 @@ const ShiftStaffDisplay = ({
         {dayStaff.length > 0 ? (
           <div className="flex flex-wrap gap-1.5 flex-1">
             {dayStaff.map(s => (
-              <span key={s.id} className="inline-flex items-center gap-0.5 px-2 py-1 bg-white rounded-lg text-[10px] font-bold text-sky-700 border border-sky-100">
+              <span key={s.id} className="inline-flex items-center gap-0.5 px-2 py-1 bg-sky-100/60 rounded-lg text-[10px] font-bold text-sky-700 border border-sky-200/50">
                 {s.full_name}
                 {onUnassign && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onUnassign(s.id, s.full_name, 'day'); }}
-                    className="ml-0.5 p-0.5 hover:bg-sky-100 rounded text-slate-400 hover:text-rose-500 transition-colors"
+                    className="ml-0.5 p-0.5 hover:bg-sky-200 rounded text-slate-400 hover:text-rose-500 transition-colors"
                     title={`Remove ${s.full_name} from Day shift`}
                   >
                     <X size={10} />
@@ -261,12 +261,12 @@ const ShiftStaffDisplay = ({
         {nightStaff.length > 0 ? (
           <div className="flex flex-wrap gap-1.5 flex-1">
             {nightStaff.map(s => (
-              <span key={s.id} className="inline-flex items-center gap-0.5 px-2 py-1 bg-white rounded-lg text-[10px] font-bold text-indigo-700 border border-indigo-100">
+              <span key={s.id} className="inline-flex items-center gap-0.5 px-2 py-1 bg-indigo-100/60 rounded-lg text-[10px] font-bold text-indigo-700 border border-indigo-200/50">
                 {s.full_name}
                 {onUnassign && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onUnassign(s.id, s.full_name, 'night'); }}
-                    className="ml-0.5 p-0.5 hover:bg-indigo-100 rounded text-slate-400 hover:text-rose-500 transition-colors"
+                    className="ml-0.5 p-0.5 hover:bg-indigo-200 rounded text-slate-400 hover:text-rose-500 transition-colors"
                     title={`Remove ${s.full_name} from Night shift`}
                   >
                     <X size={10} />
