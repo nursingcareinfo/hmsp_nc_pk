@@ -26,7 +26,9 @@ export const SupabaseStatus: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['staff'] });
     queryClient.invalidateQueries({ queryKey: ['patients'] });
     queryClient.invalidateQueries({ queryKey: ['advances'] });
+    queryClient.invalidateQueries({ queryKey: ['advances-summary'] });
     queryClient.invalidateQueries({ queryKey: ['duty'] });
+    queryClient.invalidateQueries({ queryKey: ['duty-roster'] });
     queryClient.invalidateQueries({ queryKey: ['attendance'] });
     queryClient.invalidateQueries({ queryKey: ['payroll'] });
   };
