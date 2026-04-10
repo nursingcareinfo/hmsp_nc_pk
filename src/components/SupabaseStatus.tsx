@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { INITIAL_STAFF } from '../staffData';
 import { toast } from 'sonner';
 import { Database, Loader2, AlertCircle, CheckCircle2, Users, UserRound, RefreshCw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Stats {
   staffCount: number;
@@ -18,108 +19,72 @@ export const SupabaseStatus: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
 
-  const handleManualSync = async () => {
-    if (!supabase) return;
-    setIsSyncing(true);
-    setSyncProgress(0);
+  const queryClient = useQueryClient();
+
+  /** Invalidate all relevant React Query caches across the app */
+  const invalidateAllCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ['staff'] });
+    queryClient.invalidateQueries({ queryKey: ['patients'] });
+    queryClient.invalidateQueries({ queryKey: ['advances'] });
+    queryClient.invalidateQueries({ queryKey: ['duty'] });
+    queryClient.invalidateQueries({ queryKey: ['attendance'] });
+    queryClient.invalidateQueries({ queryKey: ['payroll'] });
+  };
+
+  /** Fetch stats + invalidate caches (called on every realtime event) */
+  const checkConnectionAndFetchStats = async () => {
     try {
-      const { data: currentData } = await supabase.from('staff').select('id', { count: 'exact', head: true });
-      if (currentData && currentData.length > 0) {
-        toast.info('Database already has data. Sync skipped.');
-        setIsSyncing(false);
+      if (!supabase) {
+        setError('Supabase configuration missing');
+        setLoading(false);
         return;
       }
 
-      const toInsert = INITIAL_STAFF.map((s, index) => {
-        const { id, ...rest } = s;
-        return {
-          ...rest,
-          assigned_id: s.assigned_id || `NC-KHI-${(index + 1).toString().padStart(3, '0')}`,
-          shift_rate: s.shift_rate || Math.round(s.salary / 30)
-        };
+      // Test connection
+      const { data: healthData, error: healthError } = await supabase.from('staff').select('id', { count: 'exact', head: true });
+
+      if (healthError) throw healthError;
+
+      setIsConnected(true);
+
+      // Fetch stats
+      const { count: staffCount } = await supabase.from('staff').select('*', { count: 'exact', head: true });
+      const { count: patientCount } = await supabase.from('patients').select('*', { count: 'exact', head: true });
+
+      setStats({
+        staffCount: staffCount || 0,
+        patientCount: patientCount || 0
       });
 
-      const batchSize = 100;
-      const totalBatches = Math.ceil(toInsert.length / batchSize);
-      
-      for (let i = 0; i < toInsert.length; i += batchSize) {
-        const batch = toInsert.slice(i, i + batchSize);
-        const { error: seedError } = await supabase.from('staff').insert(batch);
-        if (seedError) throw seedError;
-        setSyncProgress(Math.round(((i + batch.length) / toInsert.length) * 100));
-      }
-      
-      toast.success('Staff data synced successfully!');
-      window.location.reload(); // Refresh to show new data
+      // Invalidate all React Query caches so every module re-fetches fresh data
+      invalidateAllCaches();
     } catch (err: any) {
-      console.error('Sync Error:', err);
-      toast.error(`Sync failed: ${err.message}`);
+      console.error('Supabase Error:', err);
+      setError(err.message || 'Failed to connect to Supabase');
+      setIsConnected(false);
     } finally {
-      setIsSyncing(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const checkConnectionAndFetchStats = async () => {
-      try {
-        if (!supabase) {
-          setError('Supabase configuration missing');
-          setLoading(false);
-          return;
-        }
-
-        // Test connection
-        const { data: healthData, error: healthError } = await supabase.from('staff').select('id', { count: 'exact', head: true });
-        
-        if (healthError) throw healthError;
-        
-        setIsConnected(true);
-        
-        // Fetch stats
-        const { count: staffCount } = await supabase.from('staff').select('*', { count: 'exact', head: true });
-        const { count: patientCount } = await supabase.from('patients').select('*', { count: 'exact', head: true });
-        
-        setStats({
-          staffCount: staffCount || 0,
-          patientCount: patientCount || 0
-        });
-      } catch (err: any) {
-        console.error('Supabase Error:', err);
-        setError(err.message || 'Failed to connect to Supabase');
-        setIsConnected(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     checkConnectionAndFetchStats();
-    
-    // Set up real-time subscription for stats
-    if (supabase) {
-      const staffChannel = supabase.channel('staff-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, () => {
-          checkConnectionAndFetchStats();
-        })
-        .subscribe();
 
-      const patientChannel = supabase.channel('patient-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'patients' }, () => {
-          checkConnectionAndFetchStats();
-        })
-        .subscribe();
+    if (!supabase) return;
 
-      const attendanceChannel = supabase.channel('attendance-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
-          checkConnectionAndFetchStats();
+    // Centralized realtime: one handler invalidates ALL caches across the app
+    const allTables = ['staff', 'patients', 'attendance_records', 'duty_assignments', 'advances', 'payroll_records'];
+    const channels = allTables.map(table =>
+      supabase.channel(`sync-${table}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+          invalidateAllCaches();
         })
-        .subscribe();
+        .subscribe()
+    );
 
-      return () => {
-        supabase.removeChannel(staffChannel);
-        supabase.removeChannel(patientChannel);
-        supabase.removeChannel(attendanceChannel);
-      };
-    }
+    return () => {
+      channels.forEach(ch => supabase.removeChannel(ch));
+    };
   }, []);
 
   if (loading) {
