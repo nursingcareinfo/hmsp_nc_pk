@@ -37,13 +37,31 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
   const [assignedStaff, setAssignedStaff] = useState<{ day: Staff[]; night: Staff[] }>({ day: [], night: [] });
 
   // Search + Filter state
+  const [rawSearchQuery, setRawSearchQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [filterDistrict, setFilterDistrict] = useState<string>('All');
   const [showAllStaff, setShowAllStaff] = useState(true);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [showCount, setShowCount] = useState(50);
   const listRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce search input (250ms) + require min 2 chars
+  const handleSearchChange = useCallback((value: string) => {
+    setRawSearchQuery(value);
+    setFocusedIndex(-1);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setSearchQuery(value.length >= 2 ? value : '');
+    }, 250);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, []);
 
   // Toggle shift selection
   const toggleShift = (shift: ShiftType) => {
@@ -144,6 +162,10 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
     });
   }, [showAllStaff, availableMatches, fullStaffPool, searchQuery, filterCategory, filterDistrict]);
 
+  // Paginate: show only first N results for performance
+  const visibleStaff = filteredStaff.slice(0, showCount);
+  const hasMore = showCount < filteredStaff.length;
+
   // Unique categories and districts for filter chips
   const categories = useMemo(() => {
     const pool = showAllStaff ? fullStaffPool : availableMatches;
@@ -187,10 +209,17 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
   // Reset search/filters when toggling showAllStaff
   useEffect(() => {
     setSearchQuery('');
+    setRawSearchQuery('');
     setFilterCategory('All');
     setFilterDistrict('All');
     setFocusedIndex(-1);
+    setShowCount(50);
   }, [showAllStaff]);
+
+  // Reset pagination when search/filter changes
+  useEffect(() => {
+    setShowCount(50);
+  }, [searchQuery, filterCategory, filterDistrict]);
 
   // Focus search input when modal opens
   useEffect(() => {
@@ -445,15 +474,15 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                   <input
                     ref={searchInputRef}
                     type="text"
-                    placeholder="Search by name, district, or designation..."
-                    value={searchQuery}
-                    onChange={e => { setSearchQuery(e.target.value); setFocusedIndex(-1); }}
+                    placeholder="Type 2+ chars to search..."
+                    value={rawSearchQuery}
+                    onChange={e => handleSearchChange(e.target.value)}
                     className="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                     aria-label="Search staff"
                   />
-                  {searchQuery && (
+                  {rawSearchQuery && (
                     <button
-                      onClick={() => { setSearchQuery(''); setFocusedIndex(-1); }}
+                      onClick={() => { setRawSearchQuery(''); setSearchQuery(''); setFocusedIndex(-1); }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                       aria-label="Clear search"
                     >
@@ -508,14 +537,15 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                     </button>
                   </div>
                 ) : (
-                  <div ref={listRef} className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar" role="listbox" aria-label="Staff list">
-                    {filteredStaff.map((match, index) => {
-                      const s = match.staff;
-                      const isSelected = selectedStaffId === s.id;
-                      const isFocused = focusedIndex === index;
-                      const score = match.staff.reliability_score ?? 0;
+                  <>
+                    <div ref={listRef} className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar" role="listbox" aria-label="Staff list">
+                      {visibleStaff.map((match, index) => {
+                        const s = match.staff;
+                        const isSelected = selectedStaffId === s.id;
+                        const isFocused = focusedIndex === index;
+                        const score = match.staff.reliability_score ?? 0;
 
-                      return (
+                        return (
                         <button
                           key={s.id}
                           onClick={() => setSelectedStaffId(s.id)}
@@ -601,7 +631,19 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                         </button>
                       );
                     })}
-                  </div>
+                    </div>
+                    {/* Load More button */}
+                    {hasMore && (
+                      <div className="flex justify-center pt-2">
+                        <button
+                          onClick={() => setShowCount(c => c + 50)}
+                          className="px-4 py-2 text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-all"
+                        >
+                          Show More ({filteredStaff.length - showCount} remaining)
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
