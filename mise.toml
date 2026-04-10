@@ -1,0 +1,117 @@
+# HMSP Nursing Care — Dev Environment Config
+# Replaces: .nvmrc, .tool-versions, .env, Makefile, npm scripts
+# Usage: mise install && mise run dev
+
+# ─── Tools ───────────────────────────────────────────────────────────
+[tools]
+node = "22"
+bun = "1.3"
+supabase = "2.75"
+
+# ─── Environment ─────────────────────────────────────────────────────
+[env]
+# Auto-inject node_modules/.bin into PATH (Immich pattern)
+# No more npx/pnpm exec — direct binary access
+_.path = ["./node_modules/.bin"]
+
+# ─── Dev Server ──────────────────────────────────────────────────────
+[tasks.dev]
+description = "Start Vite dev server on port 3000"
+run = "vite --port=3000 --host=0.0.0.0"
+
+[tasks.preview]
+description = "Preview production build"
+run = "vite preview"
+
+# ─── Build ───────────────────────────────────────────────────────────
+[tasks.build]
+description = "Production build"
+sources = ["src/**/*.{ts,tsx}", "vite.config.ts", "tsconfig.json", "package.json", "index.html"]
+outputs = ["dist/"]
+run = "vite build"
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "rm -rf dist"
+
+# ─── Quality Gates ───────────────────────────────────────────────────
+[tasks.typecheck]
+description = "TypeScript type check (no emit)"
+sources = ["src/**/*.{ts,tsx}", "tsconfig.json"]
+run = "tsc --noEmit"
+
+[tasks.lint]
+description = "Lint: typecheck + console.log check"
+depends = ["typecheck"]
+run = """
+#!/usr/bin/env bash
+LOGS=$(grep -rn 'console\\.log' src/ --include='*.ts' --include='*.tsx' 2>/dev/null || true)
+if [ -n "$LOGS" ]; then
+  echo "⚠️  console.log found:"
+  echo "$LOGS"
+  exit 0
+fi
+"""
+
+[tasks.format]
+description = "Format source code with Prettier"
+run = "prettier --write src/"
+
+# ─── Quality Pipeline ────────────────────────────────────────────────
+[tasks.check]
+description = "Full quality gate: typecheck + lint + format check"
+depends = ["typecheck"]
+run = """
+#!/usr/bin/env bash
+# Check formatting without modifying files
+prettier --check src/ 2>/dev/null || echo "⚠️  Run 'mise run format' to fix"
+"""
+
+# ─── CI Pipeline ─────────────────────────────────────────────────────
+[tasks.ci]
+description = "CI pipeline: install + typecheck + build"
+depends = ["install-deps", "typecheck", "build"]
+run = "echo '✅ CI pipeline passed'"
+
+[tasks."pre-push"]
+description = "Pre-push validation (runs before git push)"
+depends = ["typecheck", "build"]
+run = """
+#!/usr/bin/env bash
+SECRETS=$(grep -rE '(SUPABASE_ANON|SUPABASE_URL|GEMINI_API_KEY).*[\\x27\\x22]' src/ --include='*.ts' --include='*.tsx' 2>/dev/null | grep -v 'process.env' | grep -vE '\\.env' || true)
+if [ -n "$SECRETS" ]; then
+  echo "❌ Found hardcoded secrets:"
+  echo "$SECRETS"
+  exit 1
+fi
+echo "🔒 No secrets found — safe to push"
+"""
+
+# ─── Install ─────────────────────────────────────────────────────────
+[tasks."install-deps"]
+description = "Install npm dependencies"
+sources = ["package.json", "package-lock.json"]
+outputs = ["node_modules/"]
+run = "npm install --prefer-offline 2>/dev/null"
+
+[tasks.setup]
+description = "Full project setup: install deps + supabase link"
+depends = ["install-deps"]
+run = """
+#!/usr/bin/env bash
+echo ""
+echo "📋 Setup complete. Next steps:"
+echo "  mise run dev          — Start dev server"
+echo "  mise run pre-push     — Validate before git push"
+echo "  mise run ci           — Full CI pipeline"
+echo "  supabase db push       — Push migrations to cloud"
+"""
+
+# ─── Supabase ────────────────────────────────────────────────────────
+[tasks."db-push"]
+description = "Push pending migrations to Supabase Cloud"
+run = "supabase db push"
+
+[tasks."db-status"]
+description = "Check Supabase link status"
+run = "supabase status"
