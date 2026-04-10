@@ -127,3 +127,12 @@ npm run pre-push         # Local equivalent of CI check
 
 ## Qwen Added Memories
 - Assigned staff badges in PatientModule and ShiftAssignmentModal: Day shift uses bg-sky-100/60 border-sky-200/50, Night shift uses bg-indigo-100/60 border-indigo-200/50. Service Type and Assigned Staff boxes in patient detail are stacked vertically (space-y-6), not side-by-side. Both boxes have dark mode support with fallback dashes for missing fields.
+- HMSP mise.toml config (mise 2026.3.5):
+- Tools: node=22, bun=1.3, supabase=2.75
+- env._.path = ['./node_modules/.bin'] — direct binary access without npx
+- Tasks: dev, build (incremental), typecheck (incremental), check (pipeline), ci, pre-push, db-push, db-status, setup
+- Incremental builds via sources/outputs on typecheck and build tasks
+- Pre-push scans for hardcoded secrets
+- .gitignore includes .mise.local.toml and .mise/*.local.toml
+- Supabase Cloud migration: link project → db push migrations → status check
+- Migration 030 applied: rate_per_shift + rate_notes on duty_assignments for hybrid salary model

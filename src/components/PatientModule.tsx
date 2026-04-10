@@ -49,6 +49,10 @@ import {
   DollarSign,
   ReceiptText,
   Receipt,
+  IndianRupee,
+  CheckCircle,
+  XCircle,
+  MinusCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
@@ -58,6 +62,7 @@ import { format } from 'date-fns';
 import { formatPKR, formatPKDate, formatCNIC, formatPKPhone, autoFormatCNIC, autoFormatPhone } from '../lib/utils';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { ShiftStaffDisplay } from './ShiftStaffDisplay';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -167,146 +172,9 @@ const StatusBadge = ({ status }: { status: PatientStatus }) => {
 };
 
 /**
- * Displays assigned staff for a patient's day/night shifts today.
- * Shows up to 2 staff per shift with "Assign Now" button if no staff assigned.
+ * ShiftStaffDisplay is imported from ./ShiftStaffDisplay.tsx
+ * Shows assigned staff with rate per shift and monthly attendance calendar.
  */
-const ShiftStaffDisplay = ({
-  patient,
-  allStaff,
-  onAssign,
-  onUnassign,
-  refreshKey = 0,
-}: {
-  patient: Patient;
-  allStaff: Staff[];
-  onAssign: () => void;
-  onUnassign?: (staffId: string, staffName: string, shiftType: 'day' | 'night') => void;
-  refreshKey?: number;
-}) => {
-  const [dayStaff, setDayStaff] = useState<Staff[]>([]);
-  const [nightStaff, setNightStaff] = useState<Staff[]>([]);
-
-  React.useEffect(() => {
-    if (!supabase) return;
-    const today = new Date().toISOString().split('T')[0];
-
-    const fetchAssignments = () => {
-      supabase
-        .from('duty_assignments')
-        .select('staff_id, shift_type, status, rate_per_shift, rate_notes')
-        .eq('patient_id', patient.id)
-        .eq('duty_date', today)
-        .in('status', ['assigned', 'confirmed', 'completed'])
-        .then(({ data, error }) => {
-          if (error || !data) return;
-          const dayIds = data.filter(a => a.shift_type === 'day').map(a => a.staff_id);
-          const nightIds = data.filter(a => a.shift_type === 'night').map(a => a.staff_id);
-          setDayStaff(allStaff.filter(s => dayIds.includes(s.id)));
-          setNightStaff(allStaff.filter(s => nightIds.includes(s.id)));
-        });
-    };
-
-    fetchAssignments();
-
-    // Realtime: auto-refresh when duty assignments change for this patient
-    const channel = supabase.channel(`duty-patient-${patient.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'duty_assignments',
-        filter: `patient_id=eq.${patient.id}`,
-      }, fetchAssignments)
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [patient.id, allStaff, refreshKey]);
-
-  const hasAnyAssigned = dayStaff.length > 0 || nightStaff.length > 0;
-
-  if (!hasAnyAssigned) {
-    return (
-      <button
-        onClick={onAssign}
-        className="w-full py-2.5 bg-white dark:bg-slate-900 text-sky-600 rounded-xl text-xs font-bold border border-sky-200 hover:bg-sky-100 transition-all flex items-center justify-center gap-2"
-      >
-        <UserPlus size={14} />
-        Assign Now
-      </button>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {/* Day Shift */}
-      <div className="flex items-center gap-2">
-        <Sun size={14} className="text-amber-500 shrink-0" />
-        <span className="text-[10px] font-bold text-slate-500 uppercase w-10">Day</span>
-        {dayStaff.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 flex-1">
-            {dayStaff.map(s => (
-              <span key={s.id} className="inline-flex items-center gap-0.5 px-2 py-1 bg-sky-100/60 rounded-lg text-[10px] font-bold text-sky-700 border border-sky-200/50">
-                {s.full_name}
-                {onUnassign && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onUnassign(s.id, s.full_name, 'day'); }}
-                    className="ml-0.5 p-0.5 hover:bg-sky-200 rounded text-slate-400 hover:text-rose-500 transition-colors"
-                    title={`Remove ${s.full_name} from Day shift`}
-                  >
-                    <X size={10} />
-                  </button>
-                )}
-              </span>
-            ))}
-            {dayStaff.length < 2 && (
-              <button
-                onClick={onAssign}
-                className="px-2 py-1 bg-sky-50 rounded-lg text-[10px] font-bold text-sky-500 border border-dashed border-sky-200 hover:bg-sky-100 transition-all"
-              >
-                + Add
-              </button>
-            )}
-          </div>
-        ) : (
-          <span className="text-[10px] text-slate-400 italic">Not assigned</span>
-        )}
-      </div>
-
-      {/* Night Shift */}
-      <div className="flex items-center gap-2">
-        <Moon size={14} className="text-indigo-500 shrink-0" />
-        <span className="text-[10px] font-bold text-slate-500 uppercase w-10">Night</span>
-        {nightStaff.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 flex-1">
-            {nightStaff.map(s => (
-              <span key={s.id} className="inline-flex items-center gap-0.5 px-2 py-1 bg-indigo-100/60 rounded-lg text-[10px] font-bold text-indigo-700 border border-indigo-200/50">
-                {s.full_name}
-                {onUnassign && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onUnassign(s.id, s.full_name, 'night'); }}
-                    className="ml-0.5 p-0.5 hover:bg-indigo-200 rounded text-slate-400 hover:text-rose-500 transition-colors"
-                    title={`Remove ${s.full_name} from Night shift`}
-                  >
-                    <X size={10} />
-                  </button>
-                )}
-              </span>
-            ))}
-            {nightStaff.length < 2 && (
-              <button
-                onClick={onAssign}
-                className="px-2 py-1 bg-indigo-50 rounded-lg text-[10px] font-bold text-indigo-500 border border-dashed border-indigo-200 hover:bg-indigo-100 transition-all"
-              >
-                + Add
-              </button>
-            )}
-          </div>
-        ) : (
-          <span className="text-[10px] text-slate-400 italic">Not assigned</span>
-        )}
-      </div>
-    </div>
-  );
-};
 
 const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch, onEndServices }: {
   patient: Patient,
