@@ -1733,23 +1733,23 @@ export const PatientModule = () => {
                         <StatusBadge status={selectedPatient.status} />
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-8 mb-8">
-                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                      <div className="space-y-6 mb-8">
+                        <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
                           <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Service Type</p>
-                          <p className="text-sm font-bold text-slate-900">{selectedPatient.service_type}</p>
+                          <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{selectedPatient.service_type || '—'}</p>
                           <div className="flex items-center gap-4 mt-4">
                             <div>
                               <p className="text-[10px] font-bold text-slate-400 uppercase">Frequency</p>
-                              <p className="text-xs font-bold text-slate-700">{selectedPatient.frequency}</p>
+                              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedPatient.frequency || '—'}</p>
                             </div>
-                            <div className="w-px h-6 bg-slate-200" />
+                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600" />
                             <div>
                               <p className="text-[10px] font-bold text-slate-400 uppercase">Duration</p>
-                              <p className="text-xs font-bold text-slate-700">{selectedPatient.duration}</p>
+                              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedPatient.duration || '—'}</p>
                             </div>
                           </div>
                         </div>
-                        <div className="p-6 bg-sky-50 rounded-3xl border border-sky-100">
+                        <div className="p-6 bg-sky-50 dark:bg-sky-900/20 rounded-3xl border border-sky-100 dark:border-sky-800">
                           <p className="text-[10px] font-bold text-sky-400 uppercase mb-3">Assigned Staff (Today)</p>
                           <ShiftStaffDisplay
                             patient={selectedPatient}

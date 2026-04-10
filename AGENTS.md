@@ -124,3 +124,6 @@ npm run pre-push         # Local equivalent of CI check
 - horilla-hrms/ is a separate Django project — do not modify
 - Supabase Cloud project: euxzitqllnltlteckeyq
 - Current branch: feature/supabase-auth (with lean-spec-workflow for dev patterns)
+
+## Qwen Added Memories
+- Assigned staff badges in PatientModule and ShiftAssignmentModal: Day shift uses bg-sky-100/60 border-sky-200/50, Night shift uses bg-indigo-100/60 border-indigo-200/50. Service Type and Assigned Staff boxes in patient detail are stacked vertically (space-y-6), not side-by-side. Both boxes have dark mode support with fallback dashes for missing fields.
