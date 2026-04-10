@@ -195,6 +195,7 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch, onEnd
   React.useEffect(() => {
     if (!supabase) return;
     const today = new Date().toISOString().split('T')[0];
+    const staffIds = new Set(staff.map(s => s.id));
     supabase
       .from('duty_assignments')
       .select('staff_id, shift_type, status')
@@ -205,10 +206,10 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch, onEnd
         if (error || !data) return;
         const dayIds = data.filter(a => a.shift_type === 'day').map(a => a.staff_id);
         const nightIds = data.filter(a => a.shift_type === 'night').map(a => a.staff_id);
-        setDayStaff(staff.filter(s => dayIds.includes(s.id)));
-        setNightStaff(staff.filter(s => nightIds.includes(s.id)));
+        setDayStaff(staff.filter(s => staffIds.has(s.id) && dayIds.includes(s.id)));
+        setNightStaff(staff.filter(s => staffIds.has(s.id) && nightIds.includes(s.id)));
       });
-  }, [patient.id, staff]);
+  }, [patient.id, staff.length]); // Use staff.length to avoid re-fetch on array reference changes
 
   const hasChanges = 
     editBuffer.full_name !== patient.full_name || 

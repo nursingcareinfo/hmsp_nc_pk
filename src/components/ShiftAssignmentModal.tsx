@@ -95,26 +95,43 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
   }, [isOpen, patient.id, allStaff]);
 
   // Filter out already assigned staff and staff with conflicting shifts
+  // Batch: single query for all staff instead of N sequential queries
   const filterMatches = async () => {
-    const filtered: MatchResult[] = [];
+    if (!supabase || matches.length === 0) return [];
 
-    for (const match of matches) {
-      // Skip if already assigned to any shift for this patient
-      const isDayAssigned = assignedStaff.day.some(s => s.id === match.staff.id);
-      const isNightAssigned = assignedStaff.night.some(s => s.id === match.staff.id);
-      if (isDayAssigned || isNightAssigned) continue;
+    const assignedIds = new Set([
+      ...assignedStaff.day.map(s => s.id),
+      ...assignedStaff.night.map(s => s.id),
+    ]);
 
-      // Check for cross-patient double-booking
-      const staffToday = await dutyService.getStaffTodayAssignments(match.staff.id);
+    // Get all today assignments in one query
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('duty_assignments')
+      .select('staff_id, shift_type')
+      .eq('duty_date', today)
+      .in('status', ['assigned', 'confirmed', 'completed']);
 
-      // Check if staff is available for all selected shifts
-      const hasConflict = selectedShifts.some(shift => staffToday[shift]);
-      if (hasConflict) continue;
+    if (error) return matches.filter(m => !assignedIds.has(m.staff.id));
 
-      filtered.push(match);
+    // Build lookup: staff_id -> { day: boolean, night: boolean }
+    const staffTodayMap = new Map<string, { day: boolean; night: boolean }>();
+    for (const a of data) {
+      const entry = staffTodayMap.get(a.staff_id) || { day: false, night: false };
+      if (a.shift_type === 'day') entry.day = true;
+      if (a.shift_type === 'night') entry.night = true;
+      staffTodayMap.set(a.staff_id, entry);
     }
 
-    return filtered;
+    return matches.filter(match => {
+      // Skip if already assigned to this patient
+      if (assignedIds.has(match.staff.id)) return false;
+
+      // Check cross-patient double-booking
+      const staffToday = staffTodayMap.get(match.staff.id) || { day: false, night: false };
+      const hasConflict = selectedShifts.some(shift => staffToday[shift]);
+      return !hasConflict;
+    });
   };
 
   const [availableMatches, setAvailableMatches] = useState<MatchResult[]>([]);
@@ -237,7 +254,8 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
     if (selectedStaffId) {
       const staff = allStaff.find(s => s.id === selectedStaffId);
       if (staff) {
-        setRateOverride(staff.shift_rate || Math.round(staff.salary / 30));
+        const baseRate = staff.shift_rate || (staff.salary ? Math.round(staff.salary / 30) : 0);
+        setRateOverride(baseRate > 0 ? baseRate : 0);
       }
     } else {
       setRateOverride(0);
@@ -290,7 +308,10 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
 
   const handleUnassign = async (staffId: string, shiftType: ShiftType) => {
     const staff = allStaff.find(s => s.id === staffId);
-    if (!staff) return;
+    if (!staff) {
+      toast.error('Staff member not found');
+      return;
+    }
 
     try {
       await dutyService.unassignStaffFromShift(patient.id, staffId, shiftType);

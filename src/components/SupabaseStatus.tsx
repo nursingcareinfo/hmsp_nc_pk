@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { INITIAL_STAFF } from '../staffData';
 import { toast } from 'sonner';
-import { Database, Loader2, AlertCircle, CheckCircle2, Users, UserRound, RefreshCw } from 'lucide-react';
+import { Database, Loader2, AlertCircle, CheckCircle2, Users, UserRound } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface Stats {
@@ -14,27 +13,24 @@ export const SupabaseStatus: React.FC = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState(0);
 
   const queryClient = useQueryClient();
 
-  /** Invalidate all relevant React Query caches across the app */
-  const invalidateAllCaches = () => {
-    queryClient.invalidateQueries({ queryKey: ['staff'] });
-    queryClient.invalidateQueries({ queryKey: ['patients'] });
-    queryClient.invalidateQueries({ queryKey: ['advances'] });
-    queryClient.invalidateQueries({ queryKey: ['advances-summary'] });
-    queryClient.invalidateQueries({ queryKey: ['duty'] });
-    queryClient.invalidateQueries({ queryKey: ['duty-roster'] });
-    queryClient.invalidateQueries({ queryKey: ['attendance'] });
-    queryClient.invalidateQueries({ queryKey: ['payroll'] });
+  /** Invalidate only the caches relevant to a changed table */
+  const invalidateForTable = (table: string) => {
+    const keyMap: Record<string, string[]> = {
+      staff: ['staff'],
+      patients: ['patients'],
+      attendance_records: ['attendance'],
+      duty_assignments: ['duty', 'duty-roster'],
+      advances: ['advances', 'advances-summary'],
+      payroll_records: ['payroll'],
+    };
+    (keyMap[table] || []).forEach(key => queryClient.invalidateQueries({ queryKey: [key] }));
   };
 
-  /** Fetch stats + invalidate caches (called on every realtime event) */
-  const checkConnectionAndFetchStats = async () => {
+  /** Fetch stats (called on mount and periodically) */
+  const fetchStats = async () => {
     try {
       if (!supabase) {
         setError('Supabase configuration missing');
@@ -42,44 +38,38 @@ export const SupabaseStatus: React.FC = () => {
         return;
       }
 
-      // Test connection
-      const { data: healthData, error: healthError } = await supabase.from('staff').select('id', { count: 'exact', head: true });
-
+      const { error: healthError } = await supabase.from('staff').select('id', { count: 'exact', head: true });
       if (healthError) throw healthError;
 
-      setIsConnected(true);
-
-      // Fetch stats
-      const { count: staffCount } = await supabase.from('staff').select('*', { count: 'exact', head: true });
-      const { count: patientCount } = await supabase.from('patients').select('*', { count: 'exact', head: true });
+      const [{ count: staffCount }, { count: patientCount }] = await Promise.all([
+        supabase.from('staff').select('*', { count: 'exact', head: true }),
+        supabase.from('patients').select('*', { count: 'exact', head: true }),
+      ]);
 
       setStats({
         staffCount: staffCount || 0,
         patientCount: patientCount || 0
       });
-
-      // Invalidate all React Query caches so every module re-fetches fresh data
-      invalidateAllCaches();
     } catch (err: any) {
       console.error('Supabase Error:', err);
       setError(err.message || 'Failed to connect to Supabase');
-      setIsConnected(false);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    checkConnectionAndFetchStats();
+    fetchStats();
 
     if (!supabase) return;
 
-    // Centralized realtime: one handler invalidates ALL caches across the app
-    const allTables = ['staff', 'patients', 'attendance_records', 'duty_assignments', 'advances', 'payroll_records'];
-    const channels = allTables.map(table =>
+    // Subscribe to all tables with targeted cache invalidation
+    const tableNames = ['staff', 'patients', 'attendance_records', 'duty_assignments', 'advances', 'payroll_records'] as const;
+    const channels = tableNames.map(table =>
       supabase.channel(`sync-${table}`)
         .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
-          invalidateAllCaches();
+          invalidateForTable(table);
+          fetchStats(); // Update the dashboard stats too
         })
         .subscribe()
     );
@@ -179,28 +169,13 @@ export const SupabaseStatus: React.FC = () => {
 
       {stats?.staffCount === 0 && (
         <div className="pt-2 border-t border-slate-100">
-          {isSyncing ? (
-            <div className="space-y-2">
-              <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                <span>Syncing Data...</span>
-                <span>{syncProgress}%</span>
-              </div>
-              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-teal-500 transition-all duration-300" 
-                  style={{ width: `${syncProgress}%` }}
-                />
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={handleManualSync}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-teal-50 text-teal-600 rounded-xl border border-teal-100 hover:bg-teal-100 transition-all group"
-            >
-              <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Sync Initial Data</span>
-            </button>
-          )}
+          <button
+            onClick={() => toast.info('Run `cd supabase-local && python import_staff.py` to seed data')}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-teal-50 text-teal-600 rounded-xl border border-teal-100 hover:bg-teal-100 transition-all"
+          >
+            <Database size={14} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Seed Initial Data</span>
+          </button>
         </div>
       )}
     </div>

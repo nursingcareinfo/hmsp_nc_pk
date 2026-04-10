@@ -136,3 +136,4 @@ npm run pre-push         # Local equivalent of CI check
 - .gitignore includes .mise.local.toml and .mise/*.local.toml
 - Supabase Cloud migration: link project → db push migrations → status check
 - Migration 030 applied: rate_per_shift + rate_notes on duty_assignments for hybrid salary model
+- HMSP Code Review (96c5c30..HEAD) — 4 agents reviewed attendance sync + realtime + PKR changes. Fixed 1 Critical (handleManualSync crash), 5 Suggestions (targeted cache invalidation, batched N+1 queries, O(1) staff lookup, stale today closure, dead code removal). Build clean. Files modified: SupabaseStatus.tsx, ShiftStaffDisplay.tsx, ShiftAssignmentModal.tsx, PatientModule.tsx.

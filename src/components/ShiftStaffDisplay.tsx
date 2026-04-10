@@ -3,7 +3,7 @@
  * Shows assigned staff with rate per shift and an Attendance button
  * that opens the full-featured AttendanceCalendarModal (click-to-mark editing).
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Sun, Moon, UserPlus, X, CalendarDays } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Patient, Staff } from '../types';
@@ -39,12 +39,14 @@ const ShiftStaffDisplay = ({
   const [nightStaff, setNightStaff] = useState<AssignedStaffInfo[]>([]);
   const [modalStaff, setModalStaff] = useState<Staff | null>(null);
 
-  const today = new Date().toISOString().split('T')[0];
+  // O(1) staff lookup instead of O(n) .find()
+  const staffMap = useMemo(() => new Map(allStaff.map(s => [s.id, s])), [allStaff]);
 
   useEffect(() => {
     if (!supabase) return;
 
     const fetchAssignments = () => {
+      const today = new Date().toISOString().split('T')[0];
       supabase
         .from('duty_assignments')
         .select('staff_id, shift_type, status, rate_per_shift, rate_notes')
@@ -55,24 +57,22 @@ const ShiftStaffDisplay = ({
           if (error || !data) return;
           const dayAssignments = data.filter(a => a.shift_type === 'day');
           const nightAssignments = data.filter(a => a.shift_type === 'night');
-          const dayInfo: AssignedStaffInfo[] = dayAssignments.map(a => {
-            const staff = allStaff.find(s => s.id === a.staff_id);
-            return {
-              staff: staff!,
-              rate: a.rate_per_shift ?? (staff?.shift_rate || Math.round((staff?.salary || 30000) / 30)),
-              notes: a.rate_notes || undefined,
-            };
-          }).filter(a => a.staff);
-          const nightInfo: AssignedStaffInfo[] = nightAssignments.map(a => {
-            const staff = allStaff.find(s => s.id === a.staff_id);
-            return {
-              staff: staff!,
-              rate: a.rate_per_shift ?? (staff?.shift_rate || Math.round((staff?.salary || 30000) / 30)),
-              notes: a.rate_notes || undefined,
-            };
-          }).filter(a => a.staff);
-          setDayStaff(dayInfo);
-          setNightStaff(nightInfo);
+
+          const resolve = (assignments: typeof data): AssignedStaffInfo[] =>
+            assignments
+              .map(a => {
+                const staff = staffMap.get(a.staff_id);
+                if (!staff) return null;
+                return {
+                  staff,
+                  rate: a.rate_per_shift ?? (staff.shift_rate || Math.round((staff.salary || 30000) / 30)),
+                  notes: a.rate_notes || undefined,
+                };
+              })
+              .filter((a): a is AssignedStaffInfo => a !== null);
+
+          setDayStaff(resolve(dayAssignments));
+          setNightStaff(resolve(nightAssignments));
         });
     };
 
@@ -88,7 +88,7 @@ const ShiftStaffDisplay = ({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [patient.id, allStaff, refreshKey, today]);
+  }, [patient.id, refreshKey]); // staffMap not needed — channel callback reads latest via closure
 
   const hasAnyAssigned = dayStaff.length > 0 || nightStaff.length > 0;
 
@@ -106,13 +106,11 @@ const ShiftStaffDisplay = ({
 
   const renderStaffRow = (s: AssignedStaffInfo, shiftType: 'day' | 'night') => (
     <div key={s.staff.id} className="flex items-center gap-2 flex-wrap">
-      <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
-        style={{
-          backgroundColor: shiftType === 'day' ? 'rgba(14,165,233,0.08)' : 'rgba(99,102,241,0.08)',
-          color: shiftType === 'day' ? '#0369a1' : '#4338ca',
-          borderColor: shiftType === 'day' ? 'rgba(14,165,233,0.15)' : 'rgba(99,102,241,0.15)',
-        }}
-      >
+      <span className={
+        shiftType === 'day'
+          ? 'inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold border bg-sky-100/10 text-sky-700 dark:text-sky-400 border-sky-200/30 dark:border-sky-800/50'
+          : 'inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold border bg-indigo-100/10 text-indigo-700 dark:text-indigo-400 border-indigo-200/30 dark:border-indigo-800/50'
+      }>
         {s.staff.full_name}
         {onUnassign && (
           <button
