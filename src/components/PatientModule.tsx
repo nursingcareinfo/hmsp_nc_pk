@@ -49,10 +49,7 @@ import {
   DollarSign,
   ReceiptText,
   Receipt,
-  IndianRupee,
-  CheckCircle,
-  XCircle,
-  MinusCircle,
+  Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '../store';
@@ -69,7 +66,6 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import { dutyService } from '../services/dutyService';
 import { geminiService } from '../services/geminiService';
-import { Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ConfirmationModal } from './ConfirmationModal';
 import { CameraCapture } from './CameraCapture';

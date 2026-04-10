@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sun, Moon, Check, X, AlertCircle, UserPlus, Clock, MapPin, UserCheck, Search, Filter, Users, Sparkles, IndianRupee, FileText } from 'lucide-react';
+import { Sun, Moon, Check, X, AlertCircle, UserPlus, Clock, MapPin, UserCheck, Search, Filter, Users, Sparkles, FileText, CircleDollarSign } from 'lucide-react';
 import { Staff, Patient } from '../types';
 import { dutyService } from '../services/dutyService';
 import { matchStaffToPatient, MatchResult } from '../services/matchingService';
@@ -677,7 +677,7 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                     {/* Base rate display */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <IndianRupee size={14} className="text-amber-600 dark:text-amber-400" />
+                        <CircleDollarSign size={14} className="text-amber-600 dark:text-amber-400" />
                         <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">Base Rate</span>
                       </div>
                       <span className="text-sm font-black text-slate-900 dark:text-white">
@@ -688,7 +688,7 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                     {/* Override input */}
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
-                        <IndianRupee size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <CircleDollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                           type="number"
                           min="500"
@@ -748,7 +748,7 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
-                    <IndianRupee size={14} className="text-emerald-600 dark:text-emerald-400" />
+                    <CircleDollarSign size={14} className="text-emerald-600 dark:text-emerald-400" />
                     <span className="text-slate-500 dark:text-slate-400">Rate:</span>
                     <span className="font-bold text-slate-900 dark:text-white">
                       Rs. {(rateOverride > 0 ? rateOverride : (selectedStaff.shift_rate || Math.round(selectedStaff.salary / 30))).toLocaleString()}/shift
