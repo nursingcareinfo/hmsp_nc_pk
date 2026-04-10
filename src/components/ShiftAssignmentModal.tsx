@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sun, Moon, Check, X, AlertCircle, UserPlus, Clock, MapPin, UserCheck, Search, Filter, Users, Sparkles } from 'lucide-react';
+import { Sun, Moon, Check, X, AlertCircle, UserPlus, Clock, MapPin, UserCheck, Search, Filter, Users, Sparkles, IndianRupee, FileText } from 'lucide-react';
 import { Staff, Patient } from '../types';
 import { dutyService } from '../services/dutyService';
 import { matchStaffToPatient, MatchResult } from '../services/matchingService';
@@ -35,6 +35,10 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [assignedStaff, setAssignedStaff] = useState<{ day: Staff[]; night: Staff[] }>({ day: [], night: [] });
+
+  // Rate override state (hybrid salary model)
+  const [rateOverride, setRateOverride] = useState<number>(0);
+  const [rateNotes, setRateNotes] = useState('');
 
   // Search + Filter state
   const [rawSearchQuery, setRawSearchQuery] = useState('');
@@ -228,6 +232,19 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
     }
   }, [isOpen]);
 
+  // Auto-fill rate when staff is selected
+  useEffect(() => {
+    if (selectedStaffId) {
+      const staff = allStaff.find(s => s.id === selectedStaffId);
+      if (staff) {
+        setRateOverride(staff.shift_rate || Math.round(staff.salary / 30));
+      }
+    } else {
+      setRateOverride(0);
+    }
+    setRateNotes('');
+  }, [selectedStaffId, allStaff]);
+
   // Highlight matching text helper
   const highlightMatch = (text: string, query: string) => {
     if (!query) return text;
@@ -254,9 +271,12 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      await dutyService.assignStaffToShifts(patient, staff, selectedShifts);
+      const effectiveRate = rateOverride > 0 ? rateOverride : undefined;
+      const effectiveNotes = rateNotes.trim() || undefined;
+      await dutyService.assignStaffToShifts(patient, staff, selectedShifts, undefined, effectiveRate, effectiveNotes);
+      const rateStr = effectiveRate ? ` @ Rs.${effectiveRate.toLocaleString()}/shift` : '';
       toast.success(
-        `Assigned ${staff.full_name} to ${selectedShifts.map(s => s === 'day' ? 'Day' : 'Night').join(' & ')} shift${selectedShifts.length > 1 ? 's' : ''}`
+        `Assigned ${staff.full_name} to ${selectedShifts.map(s => s === 'day' ? 'Day' : 'Night').join(' & ')} shift${selectedShifts.length > 1 ? 's' : ''}${rateStr}`
       );
       onAssigned();
       onClose();
@@ -647,10 +667,78 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                 )}
               </div>
 
+              {/* Rate Override (Hybrid Salary Model) */}
+              {selectedStaff && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                    Shift Rate
+                  </h3>
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800 space-y-3">
+                    {/* Base rate display */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <IndianRupee size={14} className="text-amber-600 dark:text-amber-400" />
+                        <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">Base Rate</span>
+                      </div>
+                      <span className="text-sm font-black text-slate-900 dark:text-white">
+                        Rs. {selectedStaff.shift_rate || Math.round(selectedStaff.salary / 30)}/shift
+                      </span>
+                    </div>
+
+                    {/* Override input */}
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <IndianRupee size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="number"
+                          min="500"
+                          max="10000"
+                          step="100"
+                          value={rateOverride || ''}
+                          onChange={e => setRateOverride(Number(e.target.value) || 0)}
+                          placeholder="Override rate..."
+                          className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">Rs./shift</span>
+                    </div>
+
+                    {/* Rate notes */}
+                    <div className="relative">
+                      <FileText size={14} className="absolute left-3 top-3 text-slate-400" />
+                      <input
+                        type="text"
+                        value={rateNotes}
+                        onChange={e => setRateNotes(e.target.value)}
+                        placeholder="Why rate differs (e.g. ICU premium, night-only)..."
+                        className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
+                      />
+                    </div>
+
+                    {/* Validation warning */}
+                    {rateOverride > 10000 && (
+                      <p className="text-xs text-rose-500 font-bold flex items-center gap-1">
+                        <AlertCircle size={12} /> Rate exceeds Rs. 10,000/shift
+                      </p>
+                    )}
+                    {rateOverride > 0 && rateOverride < 500 && (
+                      <p className="text-xs text-rose-500 font-bold flex items-center gap-1">
+                        <AlertCircle size={12} /> Rate below Rs. 500/shift minimum
+                      </p>
+                    )}
+                    {rateOverride > 0 && rateOverride >= 500 && rateOverride <= 10000 && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                        ✓ Override active: Rs. {rateOverride.toLocaleString()}/shift
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Selection Summary */}
               {selectedStaff && selectedShifts.length > 0 && (
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Assignment Summary</p>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Assignment Summary</p>
                   <div className="flex items-center gap-2 text-sm">
                     <UserPlus size={16} className="text-teal-600" />
                     <span className="font-bold text-slate-900 dark:text-white">{selectedStaff.full_name}</span>
@@ -658,6 +746,21 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
                     <span className="text-slate-600 dark:text-slate-300">
                       {selectedShifts.map(s => s === 'day' ? 'Day (7AM-7PM)' : 'Night (7PM-7AM)').join(' + ')}
                     </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <IndianRupee size={14} className="text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-slate-500 dark:text-slate-400">Rate:</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      Rs. {(rateOverride > 0 ? rateOverride : (selectedStaff.shift_rate || Math.round(selectedStaff.salary / 30))).toLocaleString()}/shift
+                    </span>
+                    {rateOverride > 0 && (
+                      <span className="text-amber-600 dark:text-amber-400 text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded">
+                        OVERRIDE
+                      </span>
+                    )}
+                    {rateNotes && (
+                      <span className="text-slate-400 text-[10px] italic">— {rateNotes}</span>
+                    )}
                   </div>
                 </div>
               )}

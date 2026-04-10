@@ -309,6 +309,9 @@ export interface DutyAssignment {
   clock_out_location?: string;
   notes?: string;
   admin_notes?: string;
+  // Per-assignment rate override (hybrid salary model)
+  rate_per_shift?: number;
+  rate_notes?: string;
   is_payroll_processed: boolean;
   assigned_by?: string;
   assigned_at: string;

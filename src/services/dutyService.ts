@@ -87,6 +87,8 @@ export const dutyService = {
         admin_notes: assignment.admin_notes,
         assigned_by: assignment.assigned_by,
         is_payroll_processed: false,
+        rate_per_shift: assignment.rate_per_shift,
+        rate_notes: assignment.rate_notes,
       })
       .select()
       .single();
@@ -190,6 +192,7 @@ export const dutyService = {
   },
 
   // Calculate payroll for a staff member based on completed shifts
+  // Uses COALESCE: duty_assignments.rate_per_shift → staff.shift_rate → salary/30
   calculateStaffPayroll: async (
     staff: Staff,
     periodStart: string,
@@ -210,9 +213,10 @@ export const dutyService = {
   }> => {
     if (!supabase) throw new Error('Supabase not configured');
 
+    // Fetch completed shifts with their per-assignment rate override
     const { data: completedShifts, error } = await supabase
       .from('duty_assignments')
-      .select('shift_type')
+      .select('shift_type, rate_per_shift, rate_notes')
       .eq('staff_id', staff.id)
       .eq('status', 'completed')
       .gte('duty_date', periodStart)
@@ -220,27 +224,31 @@ export const dutyService = {
 
     if (error) throw error;
 
-    const dayShifts = completedShifts?.filter(s => s.shift_type === 'day').length || 0;
-    const nightShifts = completedShifts?.filter(s => s.shift_type === 'night').length || 0;
-    const totalShifts = dayShifts + nightShifts;
+    const baseRate = staff.shift_rate || Math.round(staff.salary / 30);
 
-    const shiftRate = staff.shift_rate || Math.round(staff.salary / 30);
-    // No premium — day and night shifts paid at same rate
-    const totalEarnings = totalShifts * shiftRate;
+    // COALESCE: use assignment override rate, fall back to staff base rate
+    const calcRate = (override: number | null) => override ?? baseRate;
+
+    const dayShifts = completedShifts?.filter(s => s.shift_type === 'day') || [];
+    const nightShifts = completedShifts?.filter(s => s.shift_type === 'night') || [];
+
+    const dayEarnings = dayShifts.reduce((sum, s) => sum + calcRate(s.rate_per_shift), 0);
+    const nightEarnings = nightShifts.reduce((sum, s) => sum + calcRate(s.rate_per_shift), 0);
+    const totalEarnings = dayEarnings + nightEarnings;
 
     return {
       staff_id: staff.id,
       staff_name: staff.full_name,
       designation: staff.designation,
-      day_shifts: dayShifts,
-      night_shifts: nightShifts,
-      total_shifts: totalShifts,
-      day_earnings: dayShifts * shiftRate,
-      night_earnings: nightShifts * shiftRate,
+      day_shifts: dayShifts.length,
+      night_shifts: nightShifts.length,
+      total_shifts: dayShifts.length + nightShifts.length,
+      day_earnings: dayEarnings,
+      night_earnings: nightEarnings,
       night_premium: 0,
       total_earnings: totalEarnings,
       base_salary: staff.salary,
-      shift_rate: shiftRate,
+      shift_rate: baseRate,
     };
   },
 
@@ -364,7 +372,9 @@ export const dutyService = {
     patient: Patient,
     staff: Staff,
     shifts: ('day' | 'night')[],
-    assignedBy?: string
+    assignedBy?: string,
+    rateOverride?: number,
+    rateNotes?: string
   ): Promise<DutyAssignment[]> => {
     if (!supabase) throw new Error('Supabase not configured');
 
@@ -403,6 +413,8 @@ export const dutyService = {
         status: 'assigned',
         assigned_by: assignedBy,
         is_payroll_processed: false,
+        rate_per_shift: rateOverride || undefined,
+        rate_notes: rateNotes || undefined,
       });
 
       created.push(assignment);

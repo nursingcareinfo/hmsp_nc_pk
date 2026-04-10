@@ -189,19 +189,36 @@ const ShiftStaffDisplay = ({
   React.useEffect(() => {
     if (!supabase) return;
     const today = new Date().toISOString().split('T')[0];
-    supabase
-      .from('duty_assignments')
-      .select('staff_id, shift_type, status')
-      .eq('patient_id', patient.id)
-      .eq('duty_date', today)
-      .in('status', ['assigned', 'confirmed', 'completed'])
-      .then(({ data, error }) => {
-        if (error || !data) return;
-        const dayIds = data.filter(a => a.shift_type === 'day').map(a => a.staff_id);
-        const nightIds = data.filter(a => a.shift_type === 'night').map(a => a.staff_id);
-        setDayStaff(allStaff.filter(s => dayIds.includes(s.id)));
-        setNightStaff(allStaff.filter(s => nightIds.includes(s.id)));
-      });
+
+    const fetchAssignments = () => {
+      supabase
+        .from('duty_assignments')
+        .select('staff_id, shift_type, status, rate_per_shift, rate_notes')
+        .eq('patient_id', patient.id)
+        .eq('duty_date', today)
+        .in('status', ['assigned', 'confirmed', 'completed'])
+        .then(({ data, error }) => {
+          if (error || !data) return;
+          const dayIds = data.filter(a => a.shift_type === 'day').map(a => a.staff_id);
+          const nightIds = data.filter(a => a.shift_type === 'night').map(a => a.staff_id);
+          setDayStaff(allStaff.filter(s => dayIds.includes(s.id)));
+          setNightStaff(allStaff.filter(s => nightIds.includes(s.id)));
+        });
+    };
+
+    fetchAssignments();
+
+    // Realtime: auto-refresh when duty assignments change for this patient
+    const channel = supabase.channel(`duty-patient-${patient.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'duty_assignments',
+        filter: `patient_id=eq.${patient.id}`,
+      }, fetchAssignments)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [patient.id, allStaff, refreshKey]);
 
   const hasAnyAssigned = dayStaff.length > 0 || nightStaff.length > 0;

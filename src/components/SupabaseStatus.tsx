@@ -101,16 +101,23 @@ export const SupabaseStatus: React.FC = () => {
           checkConnectionAndFetchStats();
         })
         .subscribe();
-        
+
       const patientChannel = supabase.channel('patient-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'patients' }, () => {
           checkConnectionAndFetchStats();
         })
         .subscribe();
-        
+
+      const attendanceChannel = supabase.channel('attendance-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
+          checkConnectionAndFetchStats();
+        })
+        .subscribe();
+
       return () => {
         supabase.removeChannel(staffChannel);
         supabase.removeChannel(patientChannel);
+        supabase.removeChannel(attendanceChannel);
       };
     }
   }, []);
