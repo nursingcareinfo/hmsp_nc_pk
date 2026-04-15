@@ -1,0 +1,6 @@
+# AgentPipe — HMSP Project Config
+# Run: agentpipe run --config .agentpipe/project.yaml
+
+conversation:
+  mode: "reactive"
+  max_turns: 15
