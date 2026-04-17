@@ -6,6 +6,7 @@
 
 import { supabase } from '../lib/supabase';
 import { StaffLicense } from '../types';
+import { getKarachiToday, toKarachiISO } from '../utils/dateUtils';
 
 export const staffLicensesService = {
   // Fetch all licenses (paginated)
@@ -65,8 +66,8 @@ export const staffLicensesService = {
       .from('staff_licenses')
       .select('*')
       .in('status', ['active', 'expiring_soon'])
-      .gte('expiry_date', new Date().toISOString().split('T')[0])
-      .lte('expiry_date', futureDate.toISOString().split('T')[0])
+      .gte('expiry_date', getKarachiToday())
+      .lte('expiry_date', toKarachiISO(futureDate))
       .order('expiry_date', { ascending: true });
 
     if (error) {

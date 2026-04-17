@@ -34,6 +34,7 @@ import { twMerge } from 'tailwind-merge';
 import { format, addDays, startOfWeek, endOfWeek, isSameDay, isToday } from 'date-fns';
 import { Staff, Patient, DutyAssignment } from '../types';
 import { dutyService } from '../services/dutyService';
+import { getKarachiToday, toKarachiISO } from '../utils/dateUtils';
 import { toast } from 'sonner';
 
 function cn(...inputs: ClassValue[]) {
@@ -99,7 +100,7 @@ export const DutyRosterModule = ({ staff, patients }: { staff: Staff[], patients
   const [searchQuery, setSearchQuery] = useState('');
   const [shiftFilter, setShiftFilter] = useState<string>('all');
 
-  const dateStr = selectedDate.toISOString().split('T')[0];
+  const dateStr = toKarachiISO(selectedDate);
 
   // Fetch today's roster
   const { data: todayRoster, isLoading, refetch } = useQuery({
@@ -673,7 +674,9 @@ const AssignStaffModal: React.FC<AssignStaffModalProps> = ({ isOpen, onClose, pa
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
                   <p className="text-[10px] font-bold text-teal-400 uppercase">Rate</p>
-                  <p className="text-sm font-black text-teal-900 dark:text-teal-400">Rs {selectedStaff.shift_rate || Math.round(selectedStaff.salary / 30)}/shift</p>
+                  <p className="text-sm font-black text-teal-900 dark:text-teal-400">
+                    Rs {selectedStaff.shift_rate || (selectedStaff.salary ? Math.round(selectedStaff.salary / 30) : 1000)}/shift
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-teal-400 uppercase">District</p>

@@ -6,6 +6,7 @@
 
 import { supabase } from '../lib/supabase';
 import { PatientAdvance } from '../types';
+import { getKarachiToday } from '../utils/dateUtils';
 
 export const patientAdvancesService = {
   // Fetch all patient advances (paginated)
@@ -59,8 +60,7 @@ export const patientAdvancesService = {
     if (!supabase) throw new Error('Supabase not configured');
 
     // Generate invoice number
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+    const dateStr = getKarachiToday().replace(/-/g, '');
     const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     const invoiceNumber = `INV-${dateStr}-${randomNum}`;
 

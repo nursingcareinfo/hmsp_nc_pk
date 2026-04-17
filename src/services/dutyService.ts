@@ -6,6 +6,7 @@
 
 import { supabase } from '../lib/supabase';
 import { DutyAssignment, Staff, Patient } from '../types';
+import { getKarachiToday, getCurrentShift, getKarachiTime, toKarachiISO } from '../utils/dateUtils';
 
 export const dutyService = {
   // Fetch all duty assignments (paginated)
@@ -37,15 +38,65 @@ export const dutyService = {
   },
 
   // Get today's duty roster
-  getTodayRoster: async (date: string = new Date().toISOString().split('T')[0]): Promise<{
+  getTodayRoster: async (date: string = getKarachiToday()): Promise<{
     dayShifts: DutyAssignment[];
     nightShifts: DutyAssignment[];
   }> => {
-    const all = await dutyService.getAll({ dateFrom: date, dateTo: date });
+    // To get the COMPLETE roster for "today", we actually need:
+    // 1. Day shifts for today
+    // 2. Night shifts for today (starts 7PM)
+    // 3. Night shifts for YESTERDAY (ends 7AM today)
+    const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
+    
+    const [allToday, allYesterday] = await Promise.all([
+      dutyService.getAll({ dateFrom: date, dateTo: date }),
+      dutyService.getAll({ dateFrom: yesterday, dateTo: yesterday, shiftType: 'night' })
+    ]);
+
     return {
-      dayShifts: all.filter(a => a.shift_type === 'day'),
-      nightShifts: all.filter(a => a.shift_type === 'night'),
+      dayShifts: allToday.filter(a => a.shift_type === 'day'),
+      nightShifts: [...allToday.filter(a => a.shift_type === 'night'), ...allYesterday],
     };
+  },
+
+  /**
+   * Helper specifically for dashboard 'On Duty' count.
+   * Considers the CURRENT shift in Karachi.
+   */
+  getCurrentlyOnDutyCount: async (): Promise<number> => {
+    if (!supabase) return 0;
+    
+    const today = getKarachiToday();
+    const currentShift = getCurrentShift();
+    
+    let queryDate = today;
+    let queryShift = currentShift;
+
+    // Logic: If it's currently "night" in Karachi and it's before 7 AM, 
+    // the active shift actually started "yesterday".
+    const time = getKarachiTime();
+    const hour = parseInt(time.split(':')[0], 10);
+    
+    if (currentShift === 'night' && hour < 7) {
+      // Robust way to get "yesterday in Karachi" regardless of system local time
+      const karachiTodayStr = getKarachiToday();
+      const [year, month, day] = karachiTodayStr.split('-').map(Number);
+      const karachiDate = new Date(year, month - 1, day);
+      karachiDate.setDate(karachiDate.getDate() - 1);
+      queryDate = toKarachiISO(karachiDate);
+    }
+
+    const { data, error } = await supabase
+      .from('duty_assignments')
+      .select('staff_id')
+      .eq('duty_date', queryDate)
+      .eq('shift_type', queryShift)
+      .in('status', ['assigned', 'confirmed', 'completed']);
+
+    if (error || !data) return 0;
+    
+    // Count unique staff IDs
+    return new Set(data.map(d => d.staff_id)).size;
   },
 
   // Get duty assignments for a specific staff member
@@ -155,6 +206,32 @@ export const dutyService = {
     return data as DutyAssignment;
   },
 
+  /**
+   * Update the per-shift rate override for a specific duty assignment.
+   * Only affects this patient-staff pairing, not the staff's global shift_rate.
+   * Passing null/undefined clears the override (falls back to staff.shift_rate).
+   */
+  updateShiftRate: async (
+    assignmentId: string,
+    rate: number | null,
+    notes?: string
+  ): Promise<DutyAssignment> => {
+    if (!supabase) throw new Error('Supabase not configured');
+
+    const { data, error } = await supabase
+      .from('duty_assignments')
+      .update({
+        rate_per_shift: rate,
+        rate_notes: notes || undefined,
+      })
+      .eq('id', assignmentId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as DutyAssignment;
+  },
+
   // Clock in a staff member
   clockIn: async (id: string, location?: string): Promise<DutyAssignment> => {
     return dutyService.update(id, {
@@ -224,7 +301,8 @@ export const dutyService = {
 
     if (error) throw error;
 
-    const baseRate = staff.shift_rate || Math.round(staff.salary / 30);
+    const salary = staff.salary || 0;
+    const baseRate = staff.shift_rate || (salary > 0 ? Math.round(salary / 30) : 1000); // Fallback to 1000 PKR/shift if both zero
 
     // COALESCE: use assignment override rate, fall back to staff base rate
     const calcRate = (override: number | null) => override ?? baseRate;
@@ -285,7 +363,7 @@ export const dutyService = {
     allStaff: Staff[]
   ): Promise<{ day: Staff[]; night: Staff[] }> => {
     if (!supabase) return { day: [], night: [] };
-    const today = new Date().toISOString().split('T')[0];
+    const today = getKarachiToday();
 
     const { data, error } = await supabase
       .from('duty_assignments')
@@ -313,7 +391,7 @@ export const dutyService = {
     staffId: string
   ): Promise<{ day: boolean; night: boolean }> => {
     if (!supabase) return { day: false, night: false };
-    const today = new Date().toISOString().split('T')[0];
+    const today = getKarachiToday();
 
     const { data, error } = await supabase
       .from('duty_assignments')
@@ -339,7 +417,7 @@ export const dutyService = {
     shiftType: 'day' | 'night'
   ): Promise<number> => {
     if (!supabase) return 0;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getKarachiToday();
 
     const { data, error } = await supabase
       .from('duty_assignments')
@@ -383,7 +461,7 @@ export const dutyService = {
       throw new Error(`Cannot assign ${staff.full_name}: staff status is '${staff.status}' (must be Active)`);
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getKarachiToday();
     const created: DutyAssignment[] = [];
 
     for (const shiftType of shifts) {
@@ -445,7 +523,7 @@ export const dutyService = {
     shiftType: 'day' | 'night'
   ): Promise<void> => {
     if (!supabase) throw new Error('Supabase not configured');
-    const today = new Date().toISOString().split('T')[0];
+    const today = getKarachiToday();
 
     // Delete duty assignment
     const { error } = await supabase

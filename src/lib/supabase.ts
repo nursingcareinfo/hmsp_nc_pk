@@ -28,30 +28,6 @@ if (supabaseUrl) {
   }
 }
 
-// Debug check (masked)
-const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
-if (isDev) {
-  console.log('Supabase Config Check:', {
-    originalUrl: rawUrl,
-    finalUrl: supabaseUrl,
-    urlLength: supabaseUrl.length,
-    keyLength: supabaseKey.length,
-    isKeyValid: supabaseKey.startsWith('eyJ'), // JWTs start with eyJ
-  });
-  
-  if (supabaseUrl) {
-    try {
-      const url = new URL(supabaseUrl);
-      console.log('Supabase Host:', url.host);
-      if (!url.host.includes('supabase.co') && !url.host.includes('localhost') && !url.host.includes('127.0.0.1')) {
-        console.warn('Warning: Supabase URL host does not look like a standard Supabase domain:', url.host);
-      }
-    } catch (e) {
-      console.error('Invalid Supabase URL format:', supabaseUrl);
-    }
-  }
-}
-
 export const createClient = () => {
   if (!supabaseUrl || !supabaseKey) {
     return null;

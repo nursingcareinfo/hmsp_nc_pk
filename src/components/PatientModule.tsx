@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   UserRound,
   Search,
@@ -60,6 +60,7 @@ import { formatPKR, formatPKDate, formatCNIC, formatPKPhone, autoFormatCNIC, aut
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ShiftStaffDisplay } from './ShiftStaffDisplay';
+import { StaffQuickView } from './StaffQuickView';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -73,6 +74,7 @@ import { StaffMatchingModal } from './StaffMatchingModal';
 import { ShiftAssignmentModal } from './ShiftAssignmentModal';
 import { WhatsAppOnboardingModal } from './WhatsAppOnboardingModal';
 import { matchStaffToPatient, MatchResult } from '../services/matchingService';
+import { getKarachiToday } from '../utils/dateUtils';
 import { supabase } from '../lib/supabase';
 import { patientAdvancesService } from '../services/patientAdvancesService';
 import { generateAdvanceInvoice } from '../utils/generateInvoicePdf';
@@ -108,7 +110,7 @@ const patientSchema = z.object({
   city: z.string().optional(),
   district: z.string().default('Karachi South'),
   status: z.string().default('Active'),
-  admission_date: z.string().default(new Date().toISOString().split('T')[0]),
+  admission_date: z.string().default(getKarachiToday()),
   date_of_birth: z.string().optional(),
   gender: z.enum(['Male', 'Female']).optional().default('Male'),
   blood_group: z.string().optional(),
@@ -194,7 +196,7 @@ const PatientCard = ({ patient, staff, onClick, onEdit, onUpdate, onMatch, onEnd
   // Fetch today's duty assignments for this patient (up to 2 per shift)
   React.useEffect(() => {
     if (!supabase) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getKarachiToday();
     const staffIds = new Set(staff.map(s => s.id));
     supabase
       .from('duty_assignments')
@@ -683,11 +685,11 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
       district: 'Karachi South',
       status: 'Active',
       gender: 'Male',
-      admission_date: new Date().toISOString().split('T')[0],
+      admission_date: getKarachiToday(),
       billing_rate: 0,
       payment_method: 'Cash',
       advance_payment_received: false,
-      advance_payment_date: new Date().toISOString().split('T')[0],
+      advance_payment_date: getKarachiToday(),
       service_type: '24/7 Nursing Care',
       frequency: 'Daily',
       duration: '30 Days'
@@ -703,11 +705,11 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
           district: 'Karachi South',
           status: 'Active',
           gender: 'Male',
-          admission_date: new Date().toISOString().split('T')[0],
+          admission_date: getKarachiToday(),
           billing_rate: 0,
           payment_method: 'Cash',
           advance_payment_received: false,
-          advance_payment_date: new Date().toISOString().split('T')[0],
+          advance_payment_date: getKarachiToday(),
           service_type: '24/7 Nursing Care',
           frequency: 'Daily',
           duration: '30 Days'
@@ -1086,6 +1088,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
 // --- Module ---
 
 export const PatientModule = () => {
+  const queryClient = useQueryClient();
   const { searchQuery, patientFilters, setPatientFilters } = useUIStore();
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -1106,6 +1109,14 @@ export const PatientModule = () => {
   const [isShiftAssignOpen, setIsShiftAssignOpen] = useState(false);
   const [shiftAssignPatient, setShiftAssignPatient] = useState<Patient | null>(null);
   const [shiftAssignRefreshKey, setShiftAssignRefreshKey] = useState(0);
+  const [viewingStaff, setViewingStaff] = useState<Staff | null>(null);
+
+  // ...
+
+  // View staff profile
+  const handleViewStaff = (staff: Staff) => {
+    setViewingStaff(staff);
+  };
 
   // Unassign staff from shift
   const handleUnassignStaff = async (staffId: string, staffName: string, shiftType: 'day' | 'night') => {
@@ -1115,11 +1126,12 @@ export const PatientModule = () => {
       await dutyService.unassignStaffFromShift(selectedPatient.id, staffId, shiftType);
       toast.success(`Removed ${staffName} from ${shiftType} shift`);
       setShiftAssignRefreshKey(k => k + 1);
+      // Invalidate dashboard stats
+      queryClient.invalidateQueries({ queryKey: ['on-duty-count'] });
     } catch {
       toast.error('Failed to remove staff from shift');
     }
   };
-
   // End services modal state
   const [isEndServicesOpen, setIsEndServicesOpen] = useState(false);
   const [endServicesPatient, setEndServicesPatient] = useState<Patient | null>(null);
@@ -1135,7 +1147,7 @@ export const PatientModule = () => {
   const [advanceMethod, setAdvanceMethod] = useState('Cash');
   const [advanceReason, setAdvanceReason] = useState('');
   const [advanceNotes, setAdvanceNotes] = useState('');
-  const [advanceDate, setAdvanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [advanceDate, setAdvanceDate] = useState(getKarachiToday());
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
 
   React.useEffect(() => {
@@ -1206,7 +1218,7 @@ export const PatientModule = () => {
     try {
       const newPatient = await dataService.addPatient({
         ...data,
-        admission_date: data.admission_date || new Date().toISOString().split('T')[0],
+        admission_date: data.admission_date || getKarachiToday(),
         billing_package: data.billing_package || 'Standard',
       });
       setPatients([newPatient, ...patients]);
@@ -1256,7 +1268,7 @@ export const PatientModule = () => {
       const updateData: Partial<Patient> = {
         status,
         end_reason: reason,
-        end_date: new Date().toISOString().split('T')[0],
+        end_date: getKarachiToday(),
         end_notes: notes || undefined,
       };
 
@@ -1638,6 +1650,7 @@ export const PatientModule = () => {
                             allStaff={staff}
                             refreshKey={shiftAssignRefreshKey}
                             onUnassign={handleUnassignStaff}
+                            onViewStaff={handleViewStaff}
                             onAssign={() => {
                               setShiftAssignPatient(selectedPatient);
                               setIsShiftAssignOpen(true);
@@ -1730,7 +1743,7 @@ export const PatientModule = () => {
                             setAdvanceMethod('Cash');
                             setAdvanceReason('');
                             setAdvanceNotes('');
-                            setAdvanceDate(new Date().toISOString().split('T')[0]);
+                            setAdvanceDate(getKarachiToday());
                             setIsAdvanceModalOpen(true);
                           }}
                           className="w-full py-3 bg-red-600 text-white rounded-2xl text-xs font-bold hover:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-100 dark:shadow-red-900/20"
@@ -1831,6 +1844,8 @@ export const PatientModule = () => {
             // Refresh patient list and shift staff display
             refetch();
             setShiftAssignRefreshKey(k => k + 1);
+            // Invalidate dashboard stats
+            queryClient.invalidateQueries({ queryKey: ['on-duty-count'] });
           }}
         />
       )}
@@ -2032,6 +2047,9 @@ export const PatientModule = () => {
 
                       toast.success(`Invoice ${newAdvance.invoice_number} generated & downloaded`);
                       setIsAdvanceModalOpen(false);
+                      
+                      // Invalidate dashboard stats
+                      queryClient.invalidateQueries({ queryKey: ['advances-recent'] });
                     } catch (error) {
                       console.error('Advance creation error:', error);
                       toast.error('Failed to generate invoice. Check console for details.');
@@ -2058,6 +2076,13 @@ export const PatientModule = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Staff Quick View Modal (from assigned staff click) */}
+      <StaffQuickView
+        staff={viewingStaff}
+        onClose={() => setViewingStaff(null)}
+        onSave={() => setShiftAssignRefreshKey(k => k + 1)}
+      />
     </div>
   );
 };

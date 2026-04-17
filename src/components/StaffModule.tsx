@@ -60,6 +60,7 @@ import { ConfirmationModal } from './ConfirmationModal';
 import { CameraCapture } from './CameraCapture';
 import { AttendanceCalendarModal } from './AttendanceCalendarModal';
 import { advancesService } from '../services/advancesService';
+import { getKarachiToday } from '../utils/dateUtils';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -136,29 +137,29 @@ const CATEGORY_DESIGNATIONS: Record<StaffCategory, Designation[]> = {
 
 const DESIGNATIONS: Designation[] = Object.values(CATEGORY_DESIGNATIONS).flat() as Designation[];
 
-// --- Form Schema ---
+// --- Form Schema (only phone number required) ---
 
 const staffSchema = z.object({
-  full_name: z.string().min(3, 'Full name is required'),
+  full_name: z.string().optional(),
   father_husband_name: z.string().optional(),
   date_of_birth: z.string().optional(),
-  cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, 'Invalid CNIC format (XXXXX-XXXXXXX-X)'),
+  cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, 'Invalid CNIC format').optional().or(z.literal('')),
   contact_1: z.string().regex(/^(\+92\s?3\d{2}\s?\d{7}|03\d{2}-?\d{7}|923\d{9})$/, 'Invalid phone format (+92 3XX XXXXXXX or 03XX-XXXXXXX)'),
   alt_number: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   whatsapp: z.string().optional(),
-  category: z.enum(['Management', 'Nurses', 'Midwives', 'Attendants', 'Doctors', 'Technical', 'Other']),
-  designation: z.string().min(1, 'Designation is required'),
-  gender: z.enum(['Male', 'Female']),
-  religion: z.string().min(1, 'Religion is required'),
-  marital_status: z.string().min(1, 'Marital status is required'),
-  official_district: z.string().min(1, 'Official district is required'),
-  residential_area: z.string().min(1, 'Residential area is required'),
+  category: z.enum(['Management', 'Nurses', 'Midwives', 'Attendants', 'Doctors', 'Technical', 'Other']).optional(),
+  designation: z.string().optional(),
+  gender: z.enum(['Male', 'Female']).optional(),
+  religion: z.string().optional(),
+  marital_status: z.string().optional(),
+  official_district: z.string().optional(),
+  residential_area: z.string().optional(),
   area_town: z.string().optional(),
   city: z.string().optional(),
-  address: z.string().min(5, 'Complete address is required'),
-  qualification: z.string().min(2, 'Qualification is required'),
-  experience_years: z.number().min(0),
+  address: z.string().optional(),
+  qualification: z.string().optional(),
+  experience_years: z.number().min(0).optional(),
   relevant_experience: z.string().optional(),
   shift_preference: z.enum(['Day', 'Night', '24 hrs']).optional(),
   expected_salary: z.number().min(0).optional(),
@@ -168,9 +169,9 @@ const staffSchema = z.object({
   account_title: z.string().optional(),
   account_number: z.string().optional(),
   iban: z.string().optional(),
-  salary: z.number().min(0, 'Salary is required'),
-  shift_rate: z.number().min(0, 'Shift rate is required'),
-  hire_date: z.string().min(1, 'Hire date is required'),
+  salary: z.number().min(0).optional(),
+  shift_rate: z.number().min(0).optional(),
+  hire_date: z.string().optional(),
   emergency_contact_name: z.string().optional(),
   emergency_contact_relationship: z.string().optional(),
   emergency_contact_phone: z.string().optional(),
@@ -448,7 +449,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
       religion: 'Muslim',
       marital_status: 'Single',
       residential_area: '',
-      hire_date: new Date().toISOString().split('T')[0],
+      hire_date: getKarachiToday(),
       experience_years: 0,
       salary: 0,
       shift_rate: 0
@@ -467,7 +468,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
           category: 'Nurses',
           designation: 'Registered Nurse (R/N)',
           official_district: 'Karachi South',
-          hire_date: new Date().toISOString().split('T')[0],
+          hire_date: getKarachiToday(),
           experience_years: 0,
           salary: 0,
           shift_rate: 0
@@ -844,21 +845,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
           <button 
             type="button"
             onClick={async () => {
-              let fieldsToValidate: any[] = [];
-              if (step === 1) {
-                fieldsToValidate = ['full_name', 'cnic', 'contact_1', 'address', 'residential_area'];
-              } else if (step === 2) {
-                fieldsToValidate = ['category', 'designation', 'official_district', 'qualification'];
-              }
-
-              if (fieldsToValidate.length > 0) {
-                const isValid = await trigger(fieldsToValidate);
-                if (!isValid) {
-                  toast.error("Please fix the errors before proceeding.");
-                  return;
-                }
-              }
-
+              // Only phone is required — skip step validation, just proceed
               if (step < 3) {
                 setStep(step + 1);
               } else {

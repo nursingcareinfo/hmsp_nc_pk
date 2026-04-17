@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   DollarSign,
@@ -31,6 +31,8 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Staff, AdvanceRecord } from '../types';
 import { advancesService } from '../services/advancesService';
+import { getKarachiToday } from '../utils/dateUtils';
+import { formatPKR, formatPKDate } from '../lib/utils';
 import { toast } from 'sonner';
 
 function cn(...inputs: ClassValue[]) {
@@ -68,6 +70,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color, trend }: any) => 
 // ============================================
 
 export const AdvancesModule = ({ staff }: { staff: Staff[] }) => {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -108,12 +111,6 @@ export const AdvancesModule = ({ staff }: { staff: Staff[] }) => {
     return acc;
   }, {} as Record<string, AdvanceRecord[]>);
 
-  const formatPKR = (amount: number) =>
-    new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 }).format(amount);
-
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
-
   const statusBadge = (status: string) => {
     const styles: Record<string, string> = {
       Pending: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
@@ -139,7 +136,10 @@ export const AdvancesModule = ({ staff }: { staff: Staff[] }) => {
     try {
       await advancesService.update(advance.id, { status: newStatus });
       toast.success(`Advance ${newStatus.toLowerCase()}`);
-      refetch();
+      // Invalidate all related advance queries
+      queryClient.invalidateQueries({ queryKey: ['advances'] });
+      queryClient.invalidateQueries({ queryKey: ['advances-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['advances-recent'] });
     } catch {
       toast.error('Failed to update status');
     }
@@ -149,7 +149,10 @@ export const AdvancesModule = ({ staff }: { staff: Staff[] }) => {
     try {
       await advancesService.delete(advance.id);
       toast.success('Advance deleted');
-      refetch();
+      // Invalidate all related advance queries
+      queryClient.invalidateQueries({ queryKey: ['advances'] });
+      queryClient.invalidateQueries({ queryKey: ['advances-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['advances-recent'] });
     } catch {
       toast.error('Failed to delete');
     }
@@ -328,7 +331,7 @@ export const AdvancesModule = ({ staff }: { staff: Staff[] }) => {
                               <div>
                                 <p className="text-sm font-bold text-slate-900 dark:text-white">{formatPKR(advance.amount)}</p>
                                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                                  {formatDate(advance.advance_date)} • {advance.reason}
+                                  {formatPKDate(advance.advance_date)} • {advance.reason}
                                 </p>
                                 {advance.notes && (
                                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{advance.notes}</p>
@@ -390,7 +393,9 @@ export const AdvancesModule = ({ staff }: { staff: Staff[] }) => {
         onClose={() => setIsAddModalOpen(false)}
         staff={staff}
         onSuccess={() => {
-          refetch();
+          queryClient.invalidateQueries({ queryKey: ['advances'] });
+          queryClient.invalidateQueries({ queryKey: ['advances-summary'] });
+          queryClient.invalidateQueries({ queryKey: ['advances-recent'] });
           setIsAddModalOpen(false);
         }}
       />
@@ -412,7 +417,7 @@ interface AddAdvanceModalProps {
 const AddAdvanceModal: React.FC<AddAdvanceModalProps> = ({ isOpen, onClose, staff, onSuccess }) => {
   const [selectedStaffId, setSelectedStaffId] = useState('');
   const [amount, setAmount] = useState('');
-  const [advanceDate, setAdvanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [advanceDate, setAdvanceDate] = useState(getKarachiToday());
   const [reason, setReason] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [notes, setNotes] = useState('');
@@ -460,7 +465,7 @@ const AddAdvanceModal: React.FC<AddAdvanceModalProps> = ({ isOpen, onClose, staf
   const resetForm = () => {
     setSelectedStaffId('');
     setAmount('');
-    setAdvanceDate(new Date().toISOString().split('T')[0]);
+    setAdvanceDate(getKarachiToday());
     setReason('');
     setPaymentMethod('Cash');
     setNotes('');

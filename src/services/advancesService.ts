@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { AdvanceRecord, Staff } from '../types';
 
 export const advancesService = {
-  // Fetch all advance records
+  // Fetch all advance records (paginated)
   getAll: async (): Promise<AdvanceRecord[]> => {
     if (!supabase) return [];
 
@@ -33,6 +33,23 @@ export const advancesService = {
     }
 
     return allRecords;
+  },
+
+  // Fetch only the latest advances for dashboard
+  getRecent: async (limit: number = 10): Promise<AdvanceRecord[]> => {
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('staff_advances')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching recent advances:', error);
+      return [];
+    }
+    return (data || []) as AdvanceRecord[];
   },
 
   // Fetch advances for a specific staff member
@@ -118,20 +135,23 @@ export const advancesService = {
     const deductedAdvances = advances.filter(a => a.status === 'Deducted').reduce((sum, a) => sum + a.amount, 0);
     const cancelledAdvances = advances.filter(a => a.status === 'Cancelled').reduce((sum, a) => sum + a.amount, 0);
 
-    // Staff with most outstanding advances
-    const staffAdvancesMap = new Map<string, { name: string; total: number; pending: number; count: number }>();
+    // Staff with most outstanding advances (Pending or Approved)
+    const staffAdvancesMap = new Map<string, { name: string; total: number; outstanding: number; count: number }>();
     advances.forEach(a => {
       if (!staffAdvancesMap.has(a.staff_id)) {
-        staffAdvancesMap.set(a.staff_id, { name: a.staff_name, total: 0, pending: 0, count: 0 });
+        staffAdvancesMap.set(a.staff_id, { name: a.staff_name, total: 0, outstanding: 0, count: 0 });
       }
       const entry = staffAdvancesMap.get(a.staff_id)!;
       entry.total += a.amount;
-      if (a.status === 'Pending') entry.pending += a.amount;
+      // Outstanding = Pending or Approved (but not yet Deducted or Cancelled)
+      if (['Pending', 'Approved'].includes(a.status)) {
+        entry.outstanding += a.amount;
+      }
       entry.count++;
     });
 
     const topDebtors = Array.from(staffAdvancesMap.entries())
-      .sort((a, b) => b[1].pending - a[1].pending)
+      .sort((a, b) => b[1].outstanding - a[1].outstanding)
       .slice(0, 10)
       .map(([id, data]) => ({ staff_id: id, ...data }));
 

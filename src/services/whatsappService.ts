@@ -16,6 +16,7 @@ import { Patient, District } from '../types';
 import { geminiService } from './geminiService';
 import { dataService } from '../dataService';
 import { supabase } from '../lib/supabase';
+import { getKarachiToday } from '../utils/dateUtils';
 
 // ============================================
 // WHATSAPP MESSAGE TEMPLATES
@@ -151,7 +152,7 @@ export async function parseWhatsAppMessage(
       guardian_contact: parsed.guardian_contact || '',
       billing_rate: parsed.billing_rate || 75000,
       status: 'Pending',
-      admission_date: new Date().toISOString().split('T')[0],
+      admission_date: getKarachiToday(),
       billing_package: 'Standard',
       payment_method: 'Cash',
       advance_payment_received: false,

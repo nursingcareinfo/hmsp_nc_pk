@@ -172,19 +172,17 @@ function scoreExperience(staff: Staff): number {
 }
 
 function scoreGender(staff: Staff, patient: Patient): number {
-  // If patient has no gender preference, everyone gets full points
   const patientGender = patient.gender;
   const staffGender = staff.gender;
 
-  if (!patientGender) {
-    return WEIGHTS.gender;
-  }
-
+  // In Karachi nursing care, same-gender is often a preferred default (soft preference)
+  // but different gender is common and acceptable for medical staff.
   if (staffGender === patientGender) {
     return WEIGHTS.gender;
   }
 
-  return 0;
+  // Return 60% score for different gender instead of 0 to avoid penalizing valid matches
+  return WEIGHTS.gender * 0.6;
 }
 
 function scoreReliability(staff: Staff): number {

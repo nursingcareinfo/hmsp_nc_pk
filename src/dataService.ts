@@ -1,7 +1,8 @@
 import { Staff, Patient, District, Designation, AppUser } from './types';
 import { INITIAL_STAFF } from './staffData';
 import { supabase } from './lib/supabase';
-import { SUPER_ADMIN_EMAIL, MAX_ADMINS } from './constants';
+import { SUPER_ADMIN_EMAIL, MAX_ADMINS, DEMO_MODE, DEMO_MAX_PATIENTS, DEMO_MAX_STAFF } from './constants';
+import { DEMO_STAFF, DEMO_PATIENTS } from './demoData';
 import { toast } from 'sonner';
 
 // Track connection state to avoid repeated toasts
@@ -14,6 +15,11 @@ let connectionLostToastShown = false;
  */
 export const dataService = {
   getStaff: async (): Promise<Staff[]> => {
+    // Demo mode - return mock data
+    if (DEMO_MODE) {
+      return DEMO_STAFF;
+    }
+
     if (supabase) {
       const seenIds = new Set<string>();
       let allStaff: any[] = [];
@@ -58,7 +64,7 @@ export const dataService = {
 
         return allStaff.map(s => ({
           ...s,
-          shift_rate: s.shift_rate || Math.round((s.salary || 30000) / 30),
+          shift_rate: s.shift_rate || (s.salary ? Math.round(s.salary / 30) : 1000),
           reliability_score: scoreMap.get(s.id) ?? 0
         }));
       } catch (error: any) {
@@ -77,18 +83,42 @@ export const dataService = {
       const parsed = JSON.parse(stored) as Staff[];
       return parsed.map(s => ({
         ...s,
-        shift_rate: s.shift_rate || Math.round(s.salary / 30),
+        shift_rate: s.shift_rate || (s.salary ? Math.round(s.salary / 30) : 1000),
         reliability_score: s.reliability_score ?? 0
       }));
     }
     return INITIAL_STAFF.map(s => ({
       ...s,
-      shift_rate: s.shift_rate || Math.round(s.salary / 30),
+      shift_rate: s.shift_rate || (s.salary ? Math.round(s.salary / 30) : 1000),
       reliability_score: (s as Staff).reliability_score ?? 0
     }));
   },
   
   addStaff: async (staff: Omit<Staff, 'id' | 'assigned_id'>): Promise<Staff> => {
+    // Demo mode - use localStorage with limit
+    if (DEMO_MODE) {
+      const stored = localStorage.getItem('nc_demo_staff');
+      const existingStaff: Staff[] = stored ? JSON.parse(stored) : [...DEMO_STAFF];
+      
+      if (existingStaff.length >= DEMO_MAX_STAFF) {
+        toast.error('Demo limit reached', {
+          description: `Maximum of ${DEMO_MAX_STAFF} staff allowed in demo mode.`
+        });
+        throw new Error(`Demo limit: maximum ${DEMO_MAX_STAFF} staff allowed`);
+      }
+      
+      const newStaff: Staff = {
+        ...staff,
+        id: `DEMO-USER-${Date.now()}`,
+        assigned_id: `NC-KHI-D${String(existingStaff.length + 1).padStart(3, '0')}`,
+      } as Staff;
+      
+      const updatedStaff = [...existingStaff, newStaff];
+      localStorage.setItem('nc_demo_staff', JSON.stringify(updatedStaff));
+      toast.success('Staff added in demo mode');
+      return newStaff;
+    }
+
     if (!supabase) {
       toast.error('Database not configured');
       throw new Error('Supabase not configured');
@@ -139,6 +169,11 @@ export const dataService = {
   },
   
   getPatients: async (): Promise<Patient[]> => {
+    // Demo mode - return mock data
+    if (DEMO_MODE) {
+      return DEMO_PATIENTS;
+    }
+
     if (supabase) {
       let allPatients: any[] = [];
       let from = 0;
@@ -179,6 +214,31 @@ export const dataService = {
   },
   
   addPatient: async (patient: Omit<Patient, 'id'>): Promise<Patient> => {
+    // Demo mode - use localStorage with limit
+    if (DEMO_MODE) {
+      const stored = localStorage.getItem('nc_demo_patients');
+      const existingPatients: Patient[] = stored ? JSON.parse(stored) : [...DEMO_PATIENTS];
+      
+      if (existingPatients.length >= DEMO_MAX_PATIENTS) {
+        toast.error('Demo limit reached', {
+          description: `Maximum of ${DEMO_MAX_PATIENTS} patients allowed in demo mode.`
+        });
+        throw new Error(`Demo limit: maximum ${DEMO_MAX_PATIENTS} patients allowed`);
+      }
+      
+      const nextId = existingPatients.length + 1;
+      const newPatient: Patient = {
+        ...patient,
+        id: `DEMO-PAT-${Date.now()}`,
+        patient_id_assigned: `NC-PAT-${String(nextId).padStart(4, '0')}`,
+      } as Patient;
+      
+      const updatedPatients = [...existingPatients, newPatient];
+      localStorage.setItem('nc_demo_patients', JSON.stringify(updatedPatients));
+      toast.success('Patient registered in demo mode');
+      return newPatient;
+    }
+
     if (!supabase) {
       toast.error('Database not configured');
       throw new Error('Supabase not configured');
@@ -249,7 +309,7 @@ export const dataService = {
     if (!supabase) {
       return { 
         success: false, 
-        message: 'Supabase configuration missing. Please go to the Secrets panel in AI Studio and add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.' 
+        message: 'Database connection not configured. Environment variables required.' 
       };
     }
     try {

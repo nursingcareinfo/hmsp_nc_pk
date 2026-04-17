@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { Sun, Moon, Check, X, AlertCircle, UserPlus, Clock, MapPin, UserCheck, Search, Filter, Users, Sparkles, FileText, CircleDollarSign } from 'lucide-react';
 import { Staff, Patient } from '../types';
+import { supabase } from '../lib/supabase';
 import { dutyService } from '../services/dutyService';
 import { matchStaffToPatient, MatchResult } from '../services/matchingService';
+import { getKarachiToday } from '../utils/dateUtils';
 import { toast } from 'sonner';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -105,7 +107,7 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
     ]);
 
     // Get all today assignments in one query
-    const today = new Date().toISOString().split('T')[0];
+    const today = getKarachiToday();
     const { data, error } = await supabase
       .from('duty_assignments')
       .select('staff_id, shift_type')
@@ -254,7 +256,8 @@ export const ShiftAssignmentModal: React.FC<ShiftAssignmentModalProps> = ({
     if (selectedStaffId) {
       const staff = allStaff.find(s => s.id === selectedStaffId);
       if (staff) {
-        const baseRate = staff.shift_rate || (staff.salary ? Math.round(staff.salary / 30) : 0);
+        const salary = staff.salary || 0;
+        const baseRate = staff.shift_rate || (salary > 0 ? Math.round(salary / 30) : 0);
         setRateOverride(baseRate > 0 ? baseRate : 0);
       }
     } else {
