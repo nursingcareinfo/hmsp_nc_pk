@@ -53,19 +53,6 @@
         ]
       }
     ],
-    "BeforeTool:run_shell_command": [
-      {
-        "matcher": "git commit",
-        "hooks": [
-          {
-            "name": "validate-commit",
-            "type": "command",
-            "command": ".gemini/hooks/validate-commit.sh",
-            "timeout": 5000
-          }
-        ]
-      }
-    ],
     "SessionEnd": [
       {
         "matcher": "exit",

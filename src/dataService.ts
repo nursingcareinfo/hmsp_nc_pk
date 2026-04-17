@@ -95,7 +95,19 @@ export const dataService = {
   },
   
   addStaff: async (staff: Omit<Staff, 'id' | 'assigned_id'>): Promise<Staff> => {
-    // Demo mode - use localStorage with limit
+    if (!supabase) {
+      toast.error('Database not configured');
+      throw new Error('Supabase not configured');
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+
+    if (!userId) {
+      toast.error('Not authenticated', { description: 'Please sign in to add staff.' });
+      throw new Error('User not authenticated');
+    }
+
     if (DEMO_MODE) {
       const stored = localStorage.getItem('nc_demo_staff');
       const existingStaff: Staff[] = stored ? JSON.parse(stored) : [...DEMO_STAFF];
@@ -119,14 +131,9 @@ export const dataService = {
       return newStaff;
     }
 
-    if (!supabase) {
-      toast.error('Database not configured');
-      throw new Error('Supabase not configured');
-    }
-
     const { data, error } = await supabase
       .from('staff')
-      .insert([staff])
+      .insert([{ ...staff, user_id: userId }])
       .select()
       .single();
 
@@ -214,7 +221,19 @@ export const dataService = {
   },
   
   addPatient: async (patient: Omit<Patient, 'id'>): Promise<Patient> => {
-    // Demo mode - use localStorage with limit
+    if (!supabase) {
+      toast.error('Database not configured');
+      throw new Error('Supabase not configured');
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+
+    if (!userId) {
+      toast.error('Not authenticated', { description: 'Please sign in to add patients.' });
+      throw new Error('User not authenticated');
+    }
+
     if (DEMO_MODE) {
       const stored = localStorage.getItem('nc_demo_patients');
       const existingPatients: Patient[] = stored ? JSON.parse(stored) : [...DEMO_PATIENTS];
@@ -223,7 +242,7 @@ export const dataService = {
         toast.error('Demo limit reached', {
           description: `Maximum of ${DEMO_MAX_PATIENTS} patients allowed in demo mode.`
         });
-        throw new Error(`Demo limit: maximum ${DEMO_MAX_PATIENTS} patients allowed`);
+        throw new Error(`Demo limit: maximum ${DEMO_MAX_PATIENTS} patients`);
       }
       
       const nextId = existingPatients.length + 1;
@@ -239,16 +258,11 @@ export const dataService = {
       return newPatient;
     }
 
-    if (!supabase) {
-      toast.error('Database not configured');
-      throw new Error('Supabase not configured');
-    }
-
     const { id, ...patientData } = patient as any;
 
     const { data, error } = await supabase
       .from('patients')
-      .insert([patientData])
+      .insert([{ ...patientData, user_id: userId }])
       .select()
       .single();
 

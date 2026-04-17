@@ -1,0 +1,54 @@
+- generic [ref=e3]:
+  - region "Notifications alt+T"
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic:
+        - generic:
+          - img "Nursing Care Logo" [ref=e8]
+          - generic [ref=e9]:
+            - generic [ref=e11]: H.M.S.P
+            - generic [ref=e12]: Karachi Portal
+      - navigation:
+        - button "Dashboard" [ref=e13]:
+          - generic [ref=e18]: Dashboard
+        - button "Staff Management" [ref=e20]:
+          - generic [ref=e25]: Staff Management
+        - button "Patient Care" [ref=e26]:
+          - generic [ref=e29]: Patient Care
+        - button "Scheduling" [ref=e30]:
+          - generic [ref=e32]: Scheduling
+        - button "HR Management" [ref=e33]:
+          - generic [ref=e38]: HR Management
+        - button "Payroll" [ref=e39]:
+          - generic [ref=e41]: Payroll
+        - button "Advances" [ref=e42]:
+          - generic [ref=e45]: Advances
+        - button "Notifications 2" [ref=e46]:
+          - generic [ref=e49]: Notifications
+          - generic [ref=e50]: "2"
+        - button "Market Analysis" [ref=e51]:
+          - generic [ref=e54]: Market Analysis
+      - button "Logout" [ref=e55]:
+        - generic [ref=e58]: Logout
+  - main [ref=e59]:
+    - generic [ref=e60]:
+      - generic [ref=e62]:
+        - generic [ref=e63]: Admin Portal
+        - generic [ref=e64]: Viewer
+      - generic [ref=e65]:
+        - img [ref=e66]
+        - textbox "Search staff, patients, or records... (Ctrl+K)" [ref=e69]
+        - generic [ref=e70]:
+          - generic [ref=e71]: Ctrl
+          - generic [ref=e72]: K
+      - generic [ref=e73]:
+        - button [ref=e74]:
+          - img [ref=e75]
+        - img "Admin" [ref=e83]
+    - paragraph [ref=e87]: Authenticating...
+  - button [ref=e89]:
+    - img [ref=e90]
+  - button "Quick Actions" [ref=e94]:
+    - img [ref=e95]
+    - generic:
+      - generic: Quick Actions
