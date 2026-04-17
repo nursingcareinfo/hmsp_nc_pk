@@ -162,7 +162,7 @@ export default function App() {
     uid: user.id,
     email: user.email || '',
     displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-    role: user.user_metadata?.role || 'viewer',
+    role: SUPER_ADMIN_EMAILS.includes(user.email || '') ? 'admin' : (user.user_metadata?.role || 'viewer'),
     photoURL: user.user_metadata?.avatar_url || undefined,
     createdAt: user.created_at,
     lastLogin: new Date().toISOString()
