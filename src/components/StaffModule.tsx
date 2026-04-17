@@ -441,6 +441,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
 
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset, trigger } = useForm({
     resolver: zodResolver(staffSchema),
+    shouldUnregister: false,
     defaultValues: initialData || {
       gender: 'Female',
       category: 'Nurses',
