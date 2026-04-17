@@ -555,7 +555,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <form id="add-staff-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {step === 1 && (
+            <div className={cn("space-y-6", step !== 1 && "hidden")}>
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                 <div className="flex gap-4 mb-6">
                   <button 
@@ -674,9 +674,9 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   <input {...register('city')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500" defaultValue="Karachi" />
                 </div>
               </motion.div>
-            )}
+            </div>
 
-            {step === 2 && (
+            <div className={cn("space-y-6", step !== 2 && "hidden")}>
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -754,9 +754,9 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   <textarea {...register('relevant_experience')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500 min-h-[80px]" />
                 </div>
               </motion.div>
-            )}
+            </div>
 
-            {step === 3 && (
+            <div className={cn("space-y-6", step !== 3 && "hidden")}>
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -831,7 +831,7 @@ const AddStaffWizard = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   </div>
                 </div>
               </motion.div>
-            )}
+            </div>
           </form>
         </div>
 
