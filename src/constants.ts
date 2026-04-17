@@ -1,7 +1,11 @@
 // App-wide constants
 
-// Super admin email - the first admin account
-export const SUPER_ADMIN_EMAIL = 'nursingcareinfo21@gmail.com';
+// Super admin emails - accounts with full access
+export const SUPER_ADMIN_EMAILS = [
+  'nursingcareinfo21@gmail.com',
+  'theo@hmsp.local'
+];
+export const SUPER_ADMIN_EMAIL = SUPER_ADMIN_EMAILS[0]; // Keep for backward compatibility
 
 // Maximum number of admin users allowed
 export const MAX_ADMINS = 2;

@@ -1,7 +1,7 @@
 import { Staff, Patient, District, Designation, AppUser } from './types';
 import { INITIAL_STAFF } from './staffData';
 import { supabase } from './lib/supabase';
-import { SUPER_ADMIN_EMAIL, MAX_ADMINS, DEMO_MODE, DEMO_MAX_PATIENTS, DEMO_MAX_STAFF } from './constants';
+import { SUPER_ADMIN_EMAILS, MAX_ADMINS, DEMO_MODE, DEMO_MAX_PATIENTS, DEMO_MAX_STAFF } from './constants';
 import { DEMO_STAFF, DEMO_PATIENTS } from './demoData';
 import { toast } from 'sonner';
 
@@ -412,7 +412,7 @@ export const dataService = {
         uid: user.id,
         email: user.email,
         displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        role: user.email === SUPER_ADMIN_EMAIL ? 'admin' : 'viewer',
+        role: SUPER_ADMIN_EMAILS.includes(user.email || '') ? 'admin' : 'viewer',
         photoURL: user.user_metadata?.avatar_url,
         createdAt: user.created_at,
         lastLogin: new Date().toISOString()
@@ -439,7 +439,7 @@ export const dataService = {
       // New user - insert into users table
       const newUser = {
         ...userData,
-        role: user.email === SUPER_ADMIN_EMAIL ? 'admin' : 'viewer',
+        role: SUPER_ADMIN_EMAILS.includes(user.email || '') ? 'admin' : 'viewer',
         created_at: new Date().toISOString(),
       };
       await supabase.from('users').insert([newUser]);

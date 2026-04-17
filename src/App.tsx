@@ -64,7 +64,7 @@ import { Toaster, toast } from 'sonner';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Loader2, Wallet } from 'lucide-react';
-import { SUPER_ADMIN_EMAIL, DEMO_MODE } from './constants';
+import { SUPER_ADMIN_EMAILS, DEMO_MODE } from './constants';
 
 import { SettingsModule } from './components/SettingsModule';
 import { AppUser } from './types';
@@ -377,7 +377,7 @@ export default function App() {
                 {currentUser?.displayName || 'Admin Portal'}
               </span>
               <span className="text-[10px] font-bold text-teal-600 uppercase">
-                {currentUser?.role === 'admin' ? (currentUser.email === SUPER_ADMIN_EMAIL ? 'Super Admin' : 'Admin') : currentUser?.role || 'Viewer'}
+                {currentUser?.role === 'admin' ? (SUPER_ADMIN_EMAILS.includes(currentUser.email || '') ? 'Super Admin' : 'Admin') : currentUser?.role || 'Viewer'}
               </span>
             </div>
           </div>

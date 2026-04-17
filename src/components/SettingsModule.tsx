@@ -22,7 +22,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { dataService } from '../dataService';
 import { AppUser } from '../types';
-import { SUPER_ADMIN_EMAIL, MAX_ADMINS } from '../constants';
+import { SUPER_ADMIN_EMAILS, MAX_ADMINS } from '../constants';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabase';
@@ -148,7 +148,7 @@ export const SettingsModule = ({ currentUser }: { currentUser: AppUser | null })
   );
 
   const adminCount = users.filter(u => u.role === 'admin').length;
-  const isSuperAdmin = currentUser?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = currentUser?.email ? SUPER_ADMIN_EMAILS.includes(currentUser.email) : false;
 
   return (
     <div className="space-y-8">
