@@ -64,7 +64,7 @@ import { Toaster, toast } from 'sonner';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Loader2, Wallet } from 'lucide-react';
-import { SUPER_ADMIN_EMAIL } from './constants';
+import { SUPER_ADMIN_EMAIL, DEMO_MODE } from './constants';
 
 import { SettingsModule } from './components/SettingsModule';
 import { AppUser } from './types';
@@ -145,6 +145,14 @@ const StatCard = ({ title, value, change, icon: Icon, color }: any) => (
 export default function App() {
   const { activeTab, setActiveTab, searchQuery, setSearchQuery, notifications, theme, toggleTheme } = useUIStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Helper to navigate and close sidebar on mobile
+  const navigateToTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  };
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authView, setAuthView] = useState<'signIn' | 'signUp'>('signIn');
@@ -193,6 +201,9 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
+      setCurrentUser(null);
+      localStorage.removeItem('nc_demo_staff');
+      localStorage.removeItem('nc_demo_patients');
       toast.success('Logged out successfully');
     } catch (error) {
       toast.error('Failed to logout');
@@ -229,14 +240,38 @@ export default function App() {
     )}>
       <Toaster position="top-right" richColors theme={theme} />
       
-      {/* Sidebar — hidden until hover */}
+      {/* Sidebar — desktop: hover-based, mobile: toggle-based */}
       <aside
-        className="group fixed inset-y-0 left-0 z-50 w-2 bg-transparent hover:w-80 transition-all duration-300 ease-in-out"
-        onMouseEnter={() => setIsSidebarOpen(true)}
-        onMouseLeave={() => setIsSidebarOpen(false)}
+        className={cn(
+          "group fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out",
+          // Desktop (lg+): 2px trigger on left edge, expand on hover
+          "hidden lg:block lg:w-2 lg:bg-transparent lg:hover:w-80",
+          // Mobile (below lg): fixed overlay, controlled by isSidebarOpen
+          "block lg:hidden w-64 -translate-x-full",
+          isSidebarOpen && "lg:hidden translate-x-0 w-64"
+        )}
+        onMouseEnter={() => {
+          // Only on desktop (screen lg+)
+          if (window.innerWidth >= 1024) setIsSidebarOpen(true);
+        }}
+        onMouseLeave={() => {
+          if (window.innerWidth >= 1024) setIsSidebarOpen(false);
+        }}
       >
+        {/* Mobile overlay backdrop */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 lg:hidden z-[-1]"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
         <div className={cn(
-          "h-full flex flex-col p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100",
+          "h-full flex flex-col p-6 transition-opacity duration-300 delay-100",
+          // Desktop: show on hover
+          "lg:opacity-0 lg:group-hover:opacity-100",
+          // Mobile: show when isSidebarOpen is true
+          "opacity-0 group-[.translate-x-0]:opacity-100",
+          isSidebarOpen && "opacity-100",
           theme === 'dark' ? "bg-slate-900 border-r border-slate-800" : "bg-white border-r border-slate-100",
           "rounded-r-3xl shadow-2xl"
         )}>
@@ -249,56 +284,56 @@ export default function App() {
               icon={LayoutDashboard} 
               label="Dashboard" 
               active={activeTab === 'dashboard'} 
-              onClick={() => setActiveTab('dashboard')} 
+              onClick={() => navigateToTab('dashboard')} 
             />
             <SidebarItem 
               icon={Users} 
               label="Staff Management" 
               active={activeTab === 'staff'} 
-              onClick={() => setActiveTab('staff')} 
+              onClick={() => navigateToTab('staff')} 
             />
             <SidebarItem 
               icon={UserRound} 
               label="Patient Care" 
               active={activeTab === 'patients'} 
-              onClick={() => setActiveTab('patients')} 
+              onClick={() => navigateToTab('patients')} 
             />
             <SidebarItem
               icon={Calendar}
               label="Scheduling"
               active={activeTab === 'scheduling'}
-              onClick={() => setActiveTab('scheduling')}
+              onClick={() => navigateToTab('scheduling')}
             />
             <SidebarItem
               icon={Users}
               label="HR Management"
               active={activeTab === 'hr'}
-              onClick={() => setActiveTab('hr')}
+              onClick={() => navigateToTab('hr')}
             />
             <SidebarItem
               icon={DollarSign}
               label="Payroll"
               active={activeTab === 'payroll'} 
-              onClick={() => setActiveTab('payroll')}
+              onClick={() => navigateToTab('payroll')}
             />
             <SidebarItem
               icon={Wallet}
               label="Advances"
               active={activeTab === 'advances'}
-              onClick={() => setActiveTab('advances')}
+              onClick={() => navigateToTab('advances')}
             />
             <SidebarItem
               icon={Bell}
               label="Notifications" 
               active={activeTab === 'notifications'} 
-              onClick={() => setActiveTab('notifications')} 
+              onClick={() => navigateToTab('notifications')} 
               badge={unreadNotifications}
             />
             <SidebarItem 
               icon={Globe} 
               label="Market Analysis" 
               active={activeTab === 'market'} 
-              onClick={() => setActiveTab('market')} 
+              onClick={() => navigateToTab('market')} 
             />
           </nav>
 
@@ -308,7 +343,7 @@ export default function App() {
                 icon={Settings} 
                 label="Settings" 
                 active={activeTab === 'settings'} 
-                onClick={() => setActiveTab('settings')} 
+                onClick={() => navigateToTab('settings')} 
               />
             )}
             <button
@@ -445,7 +480,14 @@ export default function App() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
               >
-                {activeTab === 'dashboard' && <DashboardModule staff={staffData} patients={patientData} setActiveTab={setActiveTab} />}
+                {activeTab === 'dashboard' && (
+                  <DashboardModule 
+                    staff={staffData} 
+                    patients={patientData} 
+                    setActiveTab={setActiveTab} 
+                    isLoading={isLoading}
+                  />
+                )}
                 <Suspense fallback={
                   <div className="flex items-center justify-center py-32">
                     <div className="flex flex-col items-center gap-4">
