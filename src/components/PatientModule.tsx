@@ -78,7 +78,7 @@ import { getKarachiToday } from '../utils/dateUtils';
 import { supabase } from '../lib/supabase';
 import { patientAdvancesService } from '../services/patientAdvancesService';
 import { generateAdvanceInvoice } from '../utils/generateInvoicePdf';
-import { PatientAdvance } from '../types';
+import { PatientAdvance, ServiceCategory, AcuityLevel, SERVICE_CATEGORY_LABELS, ACUITY_LABELS, ACUITY_COLORS } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -138,6 +138,13 @@ const patientSchema = z.object({
   service_type: z.string().default('24/7 Nursing Care'),
   frequency: z.string().default('Daily'),
   duration: z.string().default('30 Days'),
+  // Clinical metadata for market research
+  service_category: z.string().optional(),
+  acuity_level: z.number().optional(),
+  primary_condition: z.string().optional(),
+  comorbidities: z.string().optional(),
+  special_equipment: z.string().optional(),
+  mobility_status: z.string().optional(),
   billing_package: z.string().default('Standard'),
   billing_rate: z.number().min(0).default(0),
   payment_method: z.string().default('Cash'),
@@ -1002,6 +1009,37 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Duration *</label>
                   <input {...register('duration')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.duration && "ring-2 ring-rose-500 bg-rose-50")} placeholder="e.g. 30 Days" />
                   {errors.duration && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.duration.message as string}</p>}
+                </div>
+              </div>
+              {/* Clinical Metadata for Market Research */}
+              <div className="grid grid-cols-3 gap-6 pt-4 border-t border-slate-100">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Service Category</label>
+                  <select {...register('service_category')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500">
+                    <option value="">Select category...</option>
+                    {(Object.entries(SERVICE_CATEGORY_LABELS) as [ServiceCategory, string][]).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Care Acuity Level</label>
+                  <select {...register('acuity_level', { valueAsNumber: true })} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500">
+                    <option value="">Select acuity...</option>
+                    {([1, 2, 3, 4, 5] as AcuityLevel[]).map((level) => (
+                      <option key={level} value={level}>{level} - {ACUITY_LABELS[level]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mobility Status</label>
+                  <select {...register('mobility_status')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500">
+                    <option value="">Select mobility...</option>
+                    <option value="independent">Independent</option>
+                    <option value="assisted">Assisted</option>
+                    <option value="wheelchair">Wheelchair</option>
+                    <option value="bed_bound">Bed Bound</option>
+                  </select>
                 </div>
               </div>
             </section>

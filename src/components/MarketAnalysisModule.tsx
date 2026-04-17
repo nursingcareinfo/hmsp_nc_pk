@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Globe, 
@@ -12,13 +12,32 @@ import {
   Sparkles,
   ArrowRight,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  BarChart3,
+  Users,
+  Activity,
+  TrendingDown,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
 import { firecrawlService } from '../services/firecrawlService';
 import { geminiService } from '../services/geminiService';
+import { marketAnalyticsService } from '../services/marketAnalyticsService';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
+import { ServiceCategory, AcuityLevel, SERVICE_CATEGORY_LABELS, ACUITY_LABELS } from '../types';
 
 interface Competitor {
   title: string;
@@ -34,6 +53,40 @@ export const MarketAnalysisModule = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<Competitor[]>([]);
   const [selectedCompetitor, setSelectedCompetitor] = useState<Competitor | null>(null);
+  const [serviceStats, setServiceStats] = useState<{ category: ServiceCategory; count: number; avgRate: number }[]>([]);
+  const [acuityData, setAcuityData] = useState<{ level: AcuityLevel; count: number }[]>([]);
+  const [overview, setOverview] = useState<any>(null);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(true);
+
+  useEffect(() => {
+    loadMarketInsights();
+  }, []);
+
+  const loadMarketInsights = async () => {
+    setIsLoadingInsights(true);
+    try {
+      const [stats, acuity, overviewData] = await Promise.all([
+        marketAnalyticsService.getServiceCategoryStats(),
+        marketAnalyticsService.getAcuityDistribution(),
+        marketAnalyticsService.getMarketOverview(),
+      ]);
+      setServiceStats(stats);
+      setAcuityData(acuity);
+      setOverview(overviewData);
+    } catch (error) {
+      console.error('Failed to load market insights:', error);
+    } finally {
+      setIsLoadingInsights(false);
+    }
+  };
+
+  const COLORS = ['#14b8a6', '#0d9488', '#0f766e', '#115e59', '#134e4a', '#042f2e', '#06b6d4', '#0891b2'];
+
+  const acuityChartData = acuityData.map(d => ({
+    name: `Level ${d.level}`,
+    count: d.count,
+    description: ACUITY_LABELS[d.level].split(' - ')[0],
+  }));
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -92,7 +145,178 @@ export const MarketAnalysisModule = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* Market Insights Dashboard */}
+      <div className="bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-900/20 dark:to-emerald-900/20 rounded-3xl p-6 border border-teal-100 dark:border-teal-800/50">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-teal-100 dark:bg-teal-900/50 rounded-xl">
+              <BarChart3 className="text-teal-600 dark:text-teal-400" size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-teal-900 dark:text-teal-100">Market Intelligence Dashboard</h2>
+              <p className="text-sm text-teal-600 dark:text-teal-400">Real-time insights from your agency data</p>
+            </div>
+          </div>
+          <button 
+            onClick={loadMarketInsights}
+            disabled={isLoadingInsights}
+            className="p-2 hover:bg-teal-100 dark:hover:bg-teal-900/50 rounded-xl transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={20} className={isLoadingInsights ? 'animate-spin' : ''} />
+          </button>
+        </div>
+
+        {isLoadingInsights ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="animate-spin text-teal-600" size={32} />
+          </div>
+        ) : (
+          <>
+            {/* Overview Stats */}
+            {overview && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white/80 dark:bg-slate-900/50 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                    <Users size={16} />
+                    <span className="text-xs font-medium">Total Patients</span>
+                  </div>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.totalPatients}</p>
+                </div>
+                <div className="bg-white/80 dark:bg-slate-900/50 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                    <Activity size={16} />
+                    <span className="text-xs font-medium">Categorized</span>
+                  </div>
+                  <p className="text-2xl font-bold text-teal-600">{overview.categorizedPatients}</p>
+                  <p className="text-xs text-slate-400">{overview.totalPatients > 0 ? Math.round(overview.categorizedPatients / overview.totalPatients * 100) : 0}%</p>
+                </div>
+                <div className="bg-white/80 dark:bg-slate-900/50 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                    <DollarSign size={16} />
+                    <span className="text-xs font-medium">Avg Rate (PKR)</span>
+                  </div>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.avgBillingRate.toLocaleString()}</p>
+                </div>
+                <div className="bg-white/80 dark:bg-slate-900/50 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                    <Zap size={16} />
+                    <span className="text-xs font-medium">Top Service</span>
+                  </div>
+                  <p className="text-lg font-bold text-teal-600">
+                    {overview.topServiceCategory ? SERVICE_CATEGORY_LABELS[overview.topServiceCategory] : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Charts */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Service Category Distribution */}
+              <div className="bg-white/80 dark:bg-slate-900/50 rounded-2xl p-4">
+                <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-4">Service Category Distribution</h3>
+                {serviceStats.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={serviceStats.map(s => ({
+                      category: SERVICE_CATEGORY_LABELS[s.category] || s.category,
+                      count: s.count,
+                      avgRate: s.avgRate,
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="category" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(255,255,255,0.9)', 
+                          border: 'none', 
+                          borderRadius: '12px',
+                          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                        }}
+                        formatter={(value: number, name: string) => [
+                          name === 'count' ? `${value} patients` : `PKR ${value.toLocaleString()}`,
+                          name === 'count' ? 'Patients' : 'Avg Rate'
+                        ]}
+                      />
+                      <Bar dataKey="count" fill="#14b8a6" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[200px] text-slate-400">
+                    <div className="text-center">
+                      <BarChart3 size={32} className="mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No categorized patients yet</p>
+                      <p className="text-xs">Add service categories to patient records</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Care Acuity Distribution */}
+              <div className="bg-white/80 dark:bg-slate-900/50 rounded-2xl p-4">
+                <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-4">Care Acuity Levels</h3>
+                {acuityData.some(d => d.count > 0) ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={acuityChartData.filter(d => d.count > 0)}
+                        dataKey="count"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        labelLine={false}
+                      >
+                        {acuityChartData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[200px] text-slate-400">
+                    <div className="text-center">
+                      <Activity size={32} className="mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No acuity data yet</p>
+                      <p className="text-xs">Add acuity levels to patient records</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Competency Gaps */}
+            <div className="mt-6 bg-white/80 dark:bg-slate-900/50 rounded-2xl p-4">
+              <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-4">Market Research Tips</h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="flex items-start gap-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
+                  <TrendingUp className="text-emerald-600 mt-0.5" size={18} />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Track Demand</p>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300">Add service categories to see which care types are most requested</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-sky-50 dark:bg-sky-900/20 rounded-xl">
+                  <Users className="text-sky-600 mt-0.5" size={18} />
+                  <div>
+                    <p className="text-sm font-semibold text-sky-900 dark:text-sky-100">Staff Planning</p>
+                    <p className="text-xs text-sky-700 dark:text-sky-300">Use acuity levels to understand staffing complexity needs</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+                  <DollarSign className="text-amber-600 mt-0.5" size={18} />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Pricing Strategy</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300">Higher acuity = higher rates. Compare your pricing to market average</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Competitor Research Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">

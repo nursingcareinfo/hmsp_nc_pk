@@ -249,6 +249,13 @@ export interface Patient {
   night_shift_start?: string;
   night_shift_end?: string;
   shift_instructions?: string;
+  // Clinical metadata (Market Research)
+  service_category?: ServiceCategory;
+  acuity_level?: AcuityLevel;
+  primary_condition?: string;
+  comorbidities?: string[];
+  special_equipment?: string[];
+  mobility_status?: MobilityStatus;
   // Service end tracking
   end_reason?: PatientEndReason;
   end_date?: string;
@@ -352,4 +359,99 @@ export interface StaffLicense {
   created_by?: string;
   created_at: string;
   updated_at: string;
+}
+
+// ============================================
+// MARKET RESEARCH: Clinical Acuity + Service Categories
+// ============================================
+
+export type ServiceCategory =
+  | 'elderly_care'
+  | 'post_operative'
+  | 'baby_care'
+  | 'chronic_illness'
+  | 'disability_support'
+  | 'palliative_care'
+  | 'wound_care'
+  | 'rehabilitation'
+  | 'mental_health'
+  | 'maternal_care'
+  | 'pediatric'
+  | 'other';
+
+export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
+  elderly_care: 'Elderly Care',
+  post_operative: 'Post-Operative',
+  baby_care: 'Baby Care',
+  chronic_illness: 'Chronic Illness',
+  disability_support: 'Disability Support',
+  palliative_care: 'Palliative Care',
+  wound_care: 'Wound Care',
+  rehabilitation: 'Rehabilitation',
+  mental_health: 'Mental Health',
+  maternal_care: 'Maternal Care',
+  pediatric: 'Pediatric',
+  other: 'Other',
+};
+
+export type AcuityLevel = 1 | 2 | 3 | 4 | 5;
+
+export const ACUITY_LABELS: Record<AcuityLevel, string> = {
+  1: 'Basic - ADL assistance only',
+  2: 'Low - Minimal monitoring',
+  3: 'Moderate - Medication + monitoring',
+  4: 'High - Complex care needs',
+  5: 'Critical - Ventilator/ICU-level',
+};
+
+export const ACUITY_COLORS: Record<AcuityLevel, string> = {
+  1: 'bg-green-100 text-green-800',
+  2: 'bg-lime-100 text-lime-800',
+  3: 'bg-yellow-100 text-yellow-800',
+  4: 'bg-orange-100 text-orange-800',
+  5: 'bg-red-100 text-red-800',
+};
+
+export type MobilityStatus = 'independent' | 'assisted' | 'bed_bound' | 'wheelchair';
+
+export interface CompetencyReference {
+  code: string;
+  name: string;
+  category: string;
+  description?: string;
+  is_active: boolean;
+}
+
+export interface StaffCompetency {
+  id: string;
+  staff_id: string;
+  competency_code: string;
+  competency_name: string;
+  certification_required: boolean;
+  certification_expiry?: string;
+  verified: boolean;
+  verified_by?: string;
+  verified_at?: string;
+  created_at: string;
+}
+
+export interface PatientClinicalMetadata {
+  service_category?: ServiceCategory;
+  acuity_level?: AcuityLevel;
+  primary_condition?: string;
+  comorbidities?: string[];
+  special_equipment?: string[];
+  mobility_status?: MobilityStatus;
+}
+
+export interface MarketAnalytics {
+  district: District;
+  service_category: ServiceCategory;
+  avg_rate_day: number;
+  avg_rate_night: number;
+  patient_count: number;
+  demand_score: number;
+  supply_score: number;
+  avg_acuity: number;
+  last_updated: string;
 }
