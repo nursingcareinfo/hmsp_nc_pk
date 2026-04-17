@@ -105,7 +105,7 @@ ON CONFLICT (code) DO NOTHING;
 
 CREATE INDEX IF NOT EXISTS idx_patients_service_category ON public.patients(service_category);
 CREATE INDEX IF NOT EXISTS idx_patients_acuity ON public.patients(acuity_level);
-CREATE INDEX IF NOT EXISTS idx_patients_district ON public.patients(assigned_district);
+CREATE INDEX IF NOT EXISTS idx_patients_district ON public.patients(district);
 CREATE INDEX IF NOT EXISTS idx_competencies_staff ON public.staff_competencies(staff_id);
 CREATE INDEX IF NOT EXISTS idx_competencies_code ON public.staff_competencies(competency_code);
 
