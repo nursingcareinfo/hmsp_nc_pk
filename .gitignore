@@ -13,3 +13,5 @@ coverage/
 .qwen/logs/
 .mise.local.toml
 .mise/*.local.toml
+.agtx/
+.agtx/worktrees/
