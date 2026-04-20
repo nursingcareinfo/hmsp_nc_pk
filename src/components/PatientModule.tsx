@@ -112,7 +112,7 @@ const patientSchema = z.object({
   status: z.string().default('Active'),
   admission_date: z.string().default(getKarachiToday()),
   date_of_birth: z.string().optional(),
-  age: z.number().optional(),
+  age: z.string().optional().transform(val => val ? parseInt(val) || undefined : undefined),
   gender: z.enum(['Male', 'Female']).optional().default('Male'),
   blood_group: z.string().optional(),
   marital_status: z.string().optional(),
@@ -940,7 +940,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Age</label>
-                  <input {...register('age')} type="number" className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" placeholder="e.g. 45" />
+                  <input {...register('age')} type="text" className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" placeholder="e.g. 45" />
                 </div>
               </div>
             </section>

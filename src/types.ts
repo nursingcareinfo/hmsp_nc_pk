@@ -207,6 +207,7 @@ export interface Patient {
   status: PatientStatus;
   admission_date: string;
   date_of_birth?: string;
+  age?: number;
   gender: 'Male' | 'Female';
   blood_group?: string;
   marital_status?: string;
