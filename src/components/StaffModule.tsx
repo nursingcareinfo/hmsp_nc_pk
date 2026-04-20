@@ -142,7 +142,7 @@ const DESIGNATIONS: Designation[] = Object.values(CATEGORY_DESIGNATIONS).flat() 
 const staffSchema = z.object({
   full_name: z.string().optional(),
   father_husband_name: z.string().optional(),
-  date_of_birth: z.string().optional(),
+  date_of_birth: z.string().optional().transform(val => val === '' ? undefined : val),
   cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, 'Invalid CNIC format').optional().or(z.literal('')),
   contact_1: z.string().regex(/^(\+92\s?3\d{2}\s?\d{7}|03\d{2}-?\d{7}|923\d{9})$/, 'Invalid phone format (+92 3XX XXXXXXX or 03XX-XXXXXXX)'),
   alt_number: z.string().optional(),
