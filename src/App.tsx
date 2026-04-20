@@ -240,13 +240,12 @@ export default function App() {
     )}>
       <Toaster position="top-right" richColors theme={theme} />
       
-      {/* Sidebar — desktop: hover-based, mobile: toggle-based */}
       <aside
         className={cn(
           "group fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out",
-          "lg:block lg:w-2 lg:bg-transparent lg:hover:w-80 lg:group-hover:w-80",
-          "lg:hidden w-64",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          "hidden lg:block lg:w-2 lg:bg-transparent lg:hover:w-80 lg:group-hover:w-80",
+          isSidebarOpen && "translate-x-0 w-64",
+          !isSidebarOpen && "-translate-x-full w-64"
         )}
         onMouseEnter={() => {
           if (window.innerWidth >= 1024) setIsSidebarOpen(true);
