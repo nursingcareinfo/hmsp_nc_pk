@@ -243,9 +243,8 @@ export default function App() {
       <aside
         className={cn(
           "group fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out",
-          "hidden lg:block lg:w-2 lg:bg-transparent lg:hover:w-80",
-          isSidebarOpen && "translate-x-0 w-64",
-          !isSidebarOpen && "-translate-x-full w-64 lg:w-2"
+          "w-64 lg:w-2 lg:bg-transparent lg:hover:w-80",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-2"
         )}
         onMouseEnter={() => {
           if (window.innerWidth >= 1024) setIsSidebarOpen(true);
@@ -255,17 +254,16 @@ export default function App() {
         }}
       >
         {/* Mobile overlay backdrop */}
-        {isSidebarOpen && (
+        {isSidebarOpen && window.innerWidth < 1024 && (
           <div 
-            className="fixed inset-0 bg-black/50 lg:hidden z-[-1]"
+            className="fixed inset-0 bg-black/50 z-0"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
         <div className={cn(
           "h-full flex flex-col p-6 transition-opacity duration-300 delay-100",
           "lg:opacity-0 lg:group-hover:opacity-100",
-          "opacity-0",
-          isSidebarOpen && "opacity-100",
+          isSidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-0",
           theme === 'dark' ? "bg-slate-900 border-r border-slate-800" : "bg-white border-r border-slate-100",
           "rounded-r-3xl shadow-2xl"
         )}>
