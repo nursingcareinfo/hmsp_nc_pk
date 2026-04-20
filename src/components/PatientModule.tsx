@@ -750,6 +750,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
         if (extractedData.address) setValue('address', extractedData.address);
         if (extractedData.date_of_birth) setValue('date_of_birth', extractedData.date_of_birth);
         if (extractedData.age) setValue('age', parseInt(extractedData.age));
+        if (extractedData.gender) setValue('gender', extractedData.gender);
         if (extractedData.guardian_name) setValue('guardian_name', extractedData.guardian_name);
         if (extractedData.guardian_contact) setValue('guardian_contact', extractedData.guardian_contact);
         if (extractedData.guardian_cnic) setValue('guardian_cnic', extractedData.guardian_cnic);
