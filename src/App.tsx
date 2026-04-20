@@ -244,14 +244,11 @@ export default function App() {
       <aside
         className={cn(
           "group fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out",
-          // Desktop (lg+): 2px trigger on left edge, expand on hover
-          "hidden lg:block lg:w-2 lg:bg-transparent lg:hover:w-80 lg:group-hover:w-80",
-          // Mobile (below lg): fixed overlay, controlled by isSidebarOpen
-          "lg:hidden",
-          isSidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"
+          "lg:block lg:w-2 lg:bg-transparent lg:hover:w-80 lg:group-hover:w-80",
+          "lg:hidden w-64",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
         onMouseEnter={() => {
-          // Only on desktop (screen lg+)
           if (window.innerWidth >= 1024) setIsSidebarOpen(true);
         }}
         onMouseLeave={() => {
@@ -267,9 +264,7 @@ export default function App() {
         )}
         <div className={cn(
           "h-full flex flex-col p-6 transition-opacity duration-300 delay-100",
-          // Desktop: show on hover
           "lg:opacity-0 lg:group-hover:opacity-100",
-          // Mobile: show when isSidebarOpen is true
           "opacity-0",
           isSidebarOpen && "opacity-100",
           theme === 'dark' ? "bg-slate-900 border-r border-slate-800" : "bg-white border-r border-slate-100",
