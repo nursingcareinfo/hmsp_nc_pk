@@ -245,10 +245,10 @@ export default function App() {
         className={cn(
           "group fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out",
           // Desktop (lg+): 2px trigger on left edge, expand on hover
-          "hidden lg:block lg:w-2 lg:bg-transparent lg:hover:w-80",
+          "hidden lg:block lg:w-2 lg:bg-transparent lg:hover:w-80 lg:group-hover:w-80",
           // Mobile (below lg): fixed overlay, controlled by isSidebarOpen
-          "block lg:hidden w-64 -translate-x-full",
-          isSidebarOpen && "lg:hidden translate-x-0 w-64"
+          "lg:hidden",
+          isSidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"
         )}
         onMouseEnter={() => {
           // Only on desktop (screen lg+)
@@ -270,7 +270,7 @@ export default function App() {
           // Desktop: show on hover
           "lg:opacity-0 lg:group-hover:opacity-100",
           // Mobile: show when isSidebarOpen is true
-          "opacity-0 group-[.translate-x-0]:opacity-100",
+          "opacity-0",
           isSidebarOpen && "opacity-100",
           theme === 'dark' ? "bg-slate-900 border-r border-slate-800" : "bg-white border-r border-slate-100",
           "rounded-r-3xl shadow-2xl"
