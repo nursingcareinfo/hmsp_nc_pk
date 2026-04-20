@@ -111,7 +111,7 @@ const patientSchema = z.object({
   district: z.string().default('Karachi South'),
   status: z.string().default('Active'),
   admission_date: z.string().default(getKarachiToday()),
-  date_of_birth: z.string().optional(),
+  date_of_birth: z.string().optional().transform(val => val === '' ? undefined : val),
   age: z.string().optional().transform(val => val ? parseInt(val) || undefined : undefined),
   gender: z.enum(['Male', 'Female']).optional().default('Male'),
   blood_group: z.string().optional(),
