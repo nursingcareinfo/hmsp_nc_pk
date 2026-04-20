@@ -112,6 +112,7 @@ const patientSchema = z.object({
   status: z.string().default('Active'),
   admission_date: z.string().default(getKarachiToday()),
   date_of_birth: z.string().optional(),
+  age: z.number().optional(),
   gender: z.enum(['Male', 'Female']).optional().default('Male'),
   blood_group: z.string().optional(),
   marital_status: z.string().optional(),
@@ -747,6 +748,8 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
         if (extractedData.cnic) setValue('cnic', extractedData.cnic);
         if (extractedData.contact) setValue('contact', extractedData.contact);
         if (extractedData.address) setValue('address', extractedData.address);
+        if (extractedData.date_of_birth) setValue('date_of_birth', extractedData.date_of_birth);
+        if (extractedData.age) setValue('age', parseInt(extractedData.age));
         if (extractedData.guardian_name) setValue('guardian_name', extractedData.guardian_name);
         if (extractedData.guardian_contact) setValue('guardian_contact', extractedData.guardian_contact);
         if (extractedData.guardian_cnic) setValue('guardian_cnic', extractedData.guardian_cnic);
@@ -929,6 +932,16 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Address *</label>
                 <textarea {...register('address')} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500 min-h-[80px]", errors.address && "ring-2 ring-rose-500 bg-rose-50")} placeholder="Complete residential address in Karachi" />
                 {errors.address && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.address.message as string}</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Date of Birth</label>
+                  <input {...register('date_of_birth')} type="date" className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Age</label>
+                  <input {...register('age')} type="number" className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500" placeholder="e.g. 45" />
+                </div>
               </div>
             </section>
 
