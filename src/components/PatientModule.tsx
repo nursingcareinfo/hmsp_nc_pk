@@ -1131,7 +1131,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
             onClick={() => document.getElementById('add-patient-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))}
             className="px-8 py-3 bg-sky-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-sky-200 hover:scale-105 transition-all"
           >
-            Register Patient
+            {initialData?.id ? 'Update Patient' : 'Register Patient'}
           </button>
         </div>
       </motion.div>
