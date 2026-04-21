@@ -299,7 +299,11 @@ export const dataService = {
       throw new Error('Supabase not configured');
     }
 
-    const { error } = await supabase.from('staff').delete().eq('id', id);
+    // Soft delete - mark as inactive instead of hard delete to avoid FK constraints
+    const { error } = await supabase.from('staff').update({ 
+      status: 'Inactive',
+      assigned_patient_id: null 
+    }).eq('id', id);
     if (error) {
       toast.error('Failed to delete staff', { description: error.message });
       throw new Error(`Failed to delete staff: ${error.message}`);
@@ -312,7 +316,11 @@ export const dataService = {
       throw new Error('Supabase not configured');
     }
 
-    const { error } = await supabase.from('patients').delete().eq('id', id);
+    // Soft delete - mark as Cancelled instead of hard delete to avoid FK constraints
+    const { error } = await supabase.from('patients').update({ 
+      status: 'Cancelled',
+      assigned_staff_id: null 
+    }).eq('id', id);
     if (error) {
       toast.error('Failed to delete patient', { description: error.message });
       throw new Error(`Failed to delete patient: ${error.message}`);
