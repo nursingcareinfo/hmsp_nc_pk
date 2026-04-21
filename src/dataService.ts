@@ -301,8 +301,7 @@ export const dataService = {
 
     // Soft delete - mark as inactive instead of hard delete to avoid FK constraints
     const { error } = await supabase.from('staff').update({ 
-      status: 'Inactive',
-      assigned_patient_id: null 
+      status: 'Inactive'
     }).eq('id', id);
     if (error) {
       toast.error('Failed to delete staff', { description: error.message });
