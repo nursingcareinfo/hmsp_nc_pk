@@ -768,9 +768,13 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
     }
   };
 
-  const onSubmit = (data: any) => {
-    onAdd(data);
-    onClose();
+  const onSubmit = async (data: any) => {
+    try {
+      await onAdd(data);
+      onClose();
+    } catch (error) {
+      console.error('Form submission error:', error);
+    }
   };
 
   if (!isOpen) return null;
@@ -1128,7 +1132,13 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
           </button>
           <button 
             type="button"
-            onClick={() => document.getElementById('add-patient-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))}
+            onClick={async () => {
+              // Trigger form submission manually
+              const form = document.getElementById('add-patient-form');
+              if (form) {
+                form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+              }
+            }}
             className="px-8 py-3 bg-sky-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-sky-200 hover:scale-105 transition-all"
           >
             {initialData?.id ? 'Update Patient' : 'Register Patient'}
