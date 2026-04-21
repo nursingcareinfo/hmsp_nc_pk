@@ -299,13 +299,15 @@ const StaffCard = ({ staff, patients, onClick, onEdit, onUpdate, onAttendance }:
               className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-teal-500 dark:text-white"
             />
           ) : (
-            <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{staff.full_name}</h4>
+            <>
+              <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{staff.full_name || '-'}</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{(staff.category || 'Other')} • {(staff.designation || '-')}</p>
+              <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
+                <MapPin size={10} />
+                {staff.official_district || '-'}
+              </div>
+            </>
           )}
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{staff.category || 'Other'} • {staff.designation}</p>
-          <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
-            <MapPin size={10} />
-            {staff.official_district}
-          </div>
         </div>
       </div>
 
