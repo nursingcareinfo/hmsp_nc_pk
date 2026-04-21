@@ -805,7 +805,7 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          <form id="add-patient-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <form id="add-patient-form" onSubmit={(e) => { e.preventDefault(); handleSubmit(onSubmit)(e).catch(console.error); }} className="space-y-8">
             {/* AI Extraction */}
             <div className="flex gap-4 mb-8">
               <button 
@@ -1133,10 +1133,13 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
           <button 
             type="button"
             onClick={async () => {
-              // Trigger form submission manually
-              const form = document.getElementById('add-patient-form');
-              if (form) {
-                form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+              try {
+                const data = await handleSubmit(onSubmit)();
+                // If we get here, form is valid - close modal
+                onClose();
+                toast.success(initialData?.id ? 'Patient updated!' : 'Patient registered!');
+              } catch (err) {
+                console.error('Submit error:', err);
               }
             }}
             className="px-8 py-3 bg-sky-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-sky-200 hover:scale-105 transition-all"
