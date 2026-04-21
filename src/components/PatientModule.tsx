@@ -1066,6 +1066,17 @@ const AddPatientForm = ({ isOpen, onClose, onAdd, initialData }: any) => {
               </h3>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status</label>
+                  <select {...register('status')} className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500">
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Discharged">Discharged (Recovered)</option>
+                    <option value="Deceased">Deceased</option>
+                    <option value="Cancelled">Contract Cancelled</option>
+                    <option value="Dissatisfied">Dissatisfied</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monthly Rate (PKR) *</label>
                   <input type="number" {...register('billing_rate', { valueAsNumber: true })} className={cn("w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-sky-500", errors.billing_rate && "ring-2 ring-rose-500 bg-rose-50")} />
                   {errors.billing_rate && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-wider px-2">{errors.billing_rate.message as string}</p>}
